@@ -1,0 +1,14 @@
+﻿{
+  "KKT": {
+    "SerialPort": 3,
+    "BaundRate" : 115200,
+    "OperatorName": "Александр Смолин",
+    "OperatorInn" : "12125132523",
+    "OpeningTime" : "9:00",
+    "CloseTime" : "21:00"
+  },
+  "Printer": {
+    "SerialPort": "COM3",
+    "BaundRate" : 115200
+  }
+}

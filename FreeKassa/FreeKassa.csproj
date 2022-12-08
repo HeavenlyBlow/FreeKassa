@@ -2,7 +2,26 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net5.0</TargetFramework>
+        <TargetFramework>net5.0-windows</TargetFramework>
     </PropertyGroup>
+
+    <ItemGroup>
+      <None Update="configKassa.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\AtolDriver\AtolDriver\AtolDriver.csproj" />
+      <ProjectReference Include="..\..\ESC-POS-.NET-VPK80II\ESCPOS_NET\ESCPOS_NET.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Extensions\PrinterExceptions" />
+    </ItemGroup>
 
 </Project>
