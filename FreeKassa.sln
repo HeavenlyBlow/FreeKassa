@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FreeKassa", "FreeKassa\FreeKassa.csproj", "{782621A0-5EB2-492B-85D6-0B5670E735B7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ESCPOS_NET", "..\ESC-POS-.NET-VPK80II\ESCPOS_NET\ESCPOS_NET.csproj", "{989B798B-4343-4DDD-932B-8B235A2253FF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AtolDriver", "..\AtolDriver\AtolDriver\AtolDriver.csproj", "{450E89B0-FCF7-446C-A825-5A748F687F9C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{782621A0-5EB2-492B-85D6-0B5670E735B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{782621A0-5EB2-492B-85D6-0B5670E735B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{782621A0-5EB2-492B-85D6-0B5670E735B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{782621A0-5EB2-492B-85D6-0B5670E735B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{989B798B-4343-4DDD-932B-8B235A2253FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{989B798B-4343-4DDD-932B-8B235A2253FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{989B798B-4343-4DDD-932B-8B235A2253FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{989B798B-4343-4DDD-932B-8B235A2253FF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{450E89B0-FCF7-446C-A825-5A748F687F9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{450E89B0-FCF7-446C-A825-5A748F687F9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{450E89B0-FCF7-446C-A825-5A748F687F9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{450E89B0-FCF7-446C-A825-5A748F687F9C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
