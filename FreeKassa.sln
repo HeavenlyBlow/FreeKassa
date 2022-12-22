@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ESCPOS_NET", "..\ESC-POS-.N
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AtolDriver", "..\AtolDriver\AtolDriver\AtolDriver.csproj", "{450E89B0-FCF7-446C-A825-5A748F687F9C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CashCode.Net", "CashCode.Net\CashCode.Net.csproj", "{8CB254A1-F5C5-4A71-A4C3-F38ECE00CFE6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{450E89B0-FCF7-446C-A825-5A748F687F9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{450E89B0-FCF7-446C-A825-5A748F687F9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{450E89B0-FCF7-446C-A825-5A748F687F9C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8CB254A1-F5C5-4A71-A4C3-F38ECE00CFE6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8CB254A1-F5C5-4A71-A4C3-F38ECE00CFE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8CB254A1-F5C5-4A71-A4C3-F38ECE00CFE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8CB254A1-F5C5-4A71-A4C3-F38ECE00CFE6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

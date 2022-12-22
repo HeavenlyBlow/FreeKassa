@@ -1,23 +1,30 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <TargetFramework>net5.0-windows</TargetFramework>
+        <TargetFrameworks>net472;net5.0</TargetFrameworks>
     </PropertyGroup>
 
     <ItemGroup>
       <None Update="configKassa.json">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="LastOpenShifts.txt">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="Resources\Images\ArlekinLogo.jpg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+      <PackageReference Include="QRCoder" Version="1.4.3" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\..\AtolDriver\AtolDriver\AtolDriver.csproj" />
       <ProjectReference Include="..\..\ESC-POS-.NET-VPK80II\ESCPOS_NET\ESCPOS_NET.csproj" />
+      <ProjectReference Include="..\CashCode.Net\CashCode.Net.csproj" />
     </ItemGroup>
 
     <ItemGroup>

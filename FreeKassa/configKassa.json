@@ -1,14 +1,21 @@
 ﻿{
   "KKT": {
-    "SerialPort": 3,
+    "PrinterManagement": 0,
+    "SerialPort": 4,
     "BaundRate" : 115200,
     "OperatorName": "Александр Смолин",
-    "OperatorInn" : "12125132523",
+    "CompanyName" : "ИП Шаймарданова Гулия Зульфатовнаа",
+    "PlaceOfSettlement" : "422120, Село Янцобино",
+    "Inn" : "",
     "OpeningTime" : "9:00",
     "CloseTime" : "21:00"
   },
   "Printer": {
-    "SerialPort": "COM3",
+    "SerialPort": "COM7",
     "BaundRate" : 115200
+  },
+  "CashValidator": {
+    "SerialPort": "COM7",
+    "BaundRate" : 9600
   }
 }
