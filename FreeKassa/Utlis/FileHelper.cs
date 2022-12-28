@@ -8,14 +8,15 @@ namespace FreeKassa.Utlis
     {
         public static DateTime? GetlastOpenShiftsDateTime()
         {
+            //TODO если файла нет то создавать изменить дату открытия смены
             var str = File.ReadAllText("LastOpenShifts.txt");
             if (str == "") return null;
-            return DateTime.ParseExact(str, "dd.MM.yyyy h:mm", new CultureInfo("ru-RU"));
+            return DateTime.ParseExact(str, "g", new CultureInfo("ru-RU"));
         }
 
         public static void WriteOpenShiftsDateTime()
         {
-            File.WriteAllText("LastOpenShifts.txt", DateTime.Now.ToString(CultureInfo.InvariantCulture));
+            File.WriteAllText("LastOpenShifts.txt", DateTime.Now.ToString("g"));
         }
     }
 }

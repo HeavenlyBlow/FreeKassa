@@ -1,7 +1,7 @@
 ﻿{
   "KKT": {
     "PrinterManagement": 0,
-    "SerialPort": 4,
+    "SerialPort": 9,
     "BaundRate" : 115200,
     "OperatorName": "Александр Смолин",
     "CompanyName" : "ИП Шаймарданова Гулия Зульфатовнаа",
@@ -11,7 +11,7 @@
     "CloseTime" : "21:00"
   },
   "Printer": {
-    "SerialPort": "COM7",
+    "SerialPort": "COM6",
     "BaundRate" : 115200
   },
   "CashValidator": {

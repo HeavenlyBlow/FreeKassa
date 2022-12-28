@@ -56,7 +56,7 @@ namespace FreeKassa.FormForPrinting.FiscalDocuments
                 vkp80ii.PrintLine(IdentHelper.ArrangeWords("ФП", $"{chequeFormModel.FiscalFeatureDocument}",
                     IdentHelper.Style.FontB)),
                 vkp80ii.PrintLine(""),
-                vkp80ii.PrintImage(chequeFormModel.QrCode, false, true),
+                // vkp80ii.PrintImage(chequeFormModel.QrCode, false, true),
                 vkp80ii.PrintLine(""),
                 vkp80ii.PrintLine(""),
                 vkp80ii.PrintLine("")

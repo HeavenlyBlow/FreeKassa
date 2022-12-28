@@ -66,7 +66,11 @@ namespace FreeKassa
         {
             if (!int.TryParse(_interface.GetLastDocumentNumber(), out var documentNumber)) return null;
             var documet = _interface.GetDocument(documentNumber);
-            if (documet.Equals("")) return null;
+            if (documet.Equals(""))
+            {
+                documet = _interface.GetDocument(documentNumber - 1);
+                if (documet.Equals("")) throw new CheckoutException("Запрашиваемый документ отсутвует");
+            }
             var documentArray = documet.Split('\n');
             var model = new CloseShiftsFormModel()
             {
@@ -578,7 +582,11 @@ namespace FreeKassa
         {
             if (!int.TryParse(_interface.GetLastDocumentNumber(), out var documentNumber)) return null;
             var documet = _interface.GetDocument(documentNumber);
-            if (documet.Equals("")) return null;
+            if (documet.Equals(""))
+            {
+                documet = _interface.GetDocument(documentNumber - 1);
+                if (documet.Equals("")) throw new CheckoutException("Запрашиваемый документ отсутвует");
+            }
             var documentArray = documet.Split('\n');
             var model = new OpenShiftsFormModel()
             {
@@ -702,7 +710,11 @@ namespace FreeKassa
             };
             if (!int.TryParse(_interface.GetLastDocumentNumber(), out var documentNumber)) return null;
             var documet = _interface.GetDocument(documentNumber);
-            if (documet.Equals("")) return null;
+            if (documet.Equals(""))
+            {
+                documet = _interface.GetDocument(documentNumber - 1);
+                if (documet.Equals("")) throw new CheckoutException("Запрашиваемый документ отсутвует");
+            }
             var documentArray = documet.Split('\n');
             for (int i = 0; i < documentArray.Length; i++)
             {

@@ -87,6 +87,17 @@ namespace AtolDriver
         }
         
         /// <summary>
+        /// Проверка версии ффд
+        /// </summary>
+        /// <returns></returns>
+        public string GetFfdVersion()
+        {
+            fptr.setParam(Constants.LIBFPTR_PARAM_FN_DATA_TYPE, Constants.LIBFPTR_FNDT_FFD_VERSIONS);
+            fptr.fnQueryData();
+            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_FFD_VERSION)}";
+        }
+        
+        /// <summary>
         /// Открыть смену
         /// </summary>
         /// <returns>код ошибки</returns>
