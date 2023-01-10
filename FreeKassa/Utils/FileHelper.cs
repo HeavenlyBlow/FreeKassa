@@ -2,7 +2,7 @@
 using System.Globalization;
 using System.IO;
 
-namespace FreeKassa.Utlis
+namespace FreeKassa.Utils
 {
     public static class FileHelper
     {

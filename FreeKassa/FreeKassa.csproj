@@ -2,7 +2,8 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net5.0-windows</TargetFramework>
+        <LangVersion>9</LangVersion>
+        <TargetFrameworks>net472;net5.0</TargetFrameworks>
     </PropertyGroup>
 
     <ItemGroup>
@@ -10,9 +11,15 @@
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Update="LastOpenShifts.txt">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
       <None Update="Resources\Images\ArlekinLogo.jpg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="Resources\Images\ArlekinLogo.png">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
+      <None Update="Resources\Images\Logo.jpg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
     </ItemGroup>
@@ -23,11 +30,14 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\CashCode.Net\CashCode.Net.csproj" />
+        <ProjectReference Include="..\CashCode.Net\CashCode.Net.csproj" />
+        <ProjectReference Include="..\AtolDriver\AtolDriver.csproj" />
+        <ProjectReference Include="..\ESCPOS_NET\ESCPOS_NET.csproj" />
     </ItemGroup>
 
     <ItemGroup>
       <Folder Include="Extensions\PrinterExceptions" />
+      <Folder Include="Printer" />
     </ItemGroup>
 
 </Project>

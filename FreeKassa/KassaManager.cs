@@ -7,11 +7,11 @@ using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
 using FreeKassa.Extensions.KKTExceptions;
 using FreeKassa.FormForPrinting.UsersDocument;
+using FreeKassa.KKT;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Model.PrinitngDocumensModel;
 using FreeKassa.Utils;
-using FreeKassa.Utlis;
 
 namespace FreeKassa
 {
@@ -26,7 +26,7 @@ namespace FreeKassa
         private double _paymentCost;
         //TODO задел на то что надо будет самому управлять сменой
         private bool _manualShiftManagement = false;
-        private EPSON _vkp80ii;
+        private EPSON _vkp80Ii;
         private int _onKktPrinterManagement;
 
         public event EventHandler SuccessfullyReceipt;
@@ -34,15 +34,14 @@ namespace FreeKassa
 
         public bool StartKassa()
         {
-            var kktSettings = (KKTModel) ConfigHelper.GetSettings("KKT");
+            var kktSettings = (KKTModel)ConfigHelper.GetSettings("KKT");
             var cashValidatorSettings = (CashValidatorModel) ConfigHelper.GetSettings("CashValidator");
             _validator = new CashValidator(cashValidatorSettings);
-            // QrGenerator.Generated("stret");
             if (kktSettings.PrinterManagement == 0)
             {
                 var printerSettings = (PrinterModel)ConfigHelper.GetSettings("Printer");
-                _vkp80ii = new EPSON();
-                _printerManager = new PrinterManager(_vkp80ii, printerSettings);
+                _vkp80Ii = new EPSON();
+                _printerManager = new PrinterManager(_vkp80Ii, printerSettings);
                 _kktManager = new KKTManager(_manualShiftManagement, _printerManager, kktSettings);
             }
             else
@@ -53,33 +52,51 @@ namespace FreeKassa
             return true;
         }
         //TODO запускать в другом потоке и инвочить результат
-        public bool RegisterReceipt(bool printReceipt,ReceiptModel receiptType, List<BasketModel> basket, PayModel pay)
+        public void RegisterReceipt(bool printReceipt,ReceiptModel receiptType, List<BasketModel> basket, PayModel pay)
         {
-            _kktManager.OpenReceipt(receiptType);
-            
-            foreach (var product in basket)
+            Task task = Task.Run((() =>
             {
-                _kktManager.AddProduct(product);
-            }
-            // if (!AcceptPayment(pay)) throw new PayException("Ошибка оплаты");
-            _kktManager.AddPay(pay);
-            _kktManager.CloseReceipt(pay, basket, receiptType);
-            SuccessfullyReceipt.Invoke(null, null);
-            if (!printReceipt) return true;
-            return true;
+                _kktManager.OpenReceipt(receiptType);
+            
+                foreach (var product in basket)
+                {
+                    _kktManager.AddProduct(product);
+                }
+                // if (!AcceptPayment(pay)) throw new PayException("Ошибка оплаты");
+                _kktManager.AddPay(pay);
+                _kktManager.CloseReceipt(pay, basket, receiptType);
+                SuccessfullyReceipt!.Invoke(null, null!);
+            }));
+            
+            // _kktManager.OpenReceipt(receiptType);
+            //
+            // foreach (var product in basket)
+            // {
+            //     _kktManager.AddProduct(product);
+            // }
+            // // if (!AcceptPayment(pay)) throw new PayException("Ошибка оплаты");
+            // _kktManager.AddPay(pay);
+            // _kktManager.CloseReceipt(pay, basket, receiptType);
+            // SuccessfullyReceipt!.Invoke(null, null!);
+            // if (!printReceipt) return true;
+            // return true;
         }
 
         public bool PrintUsersDocument(IEnumerable<TicketModel> tikets)
         {
             if (_printerManager == null)
             {
-                if (_vkp80ii == null) _vkp80ii = new EPSON();
-                _printerManager = new PrinterManager(_vkp80ii, (PrinterModel)ConfigHelper.GetSettings("Printer"));
+                if (_vkp80Ii == null) _vkp80Ii = new EPSON();
+                _printerManager = new PrinterManager(_vkp80Ii, (PrinterModel)ConfigHelper.GetSettings("Printer"));
             }
-            foreach (var tiket in tikets)
-            {
-                _printerManager.Print(tiket);
-            }
+            
+            _printerManager.Print(models: tikets);
+            
+            // foreach (var tiket in tikets)
+            // {
+            //     _printerManager.Print(tiket);
+            //     Task.Delay(20000);
+            // }
 
             return true;
         }

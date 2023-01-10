@@ -4,11 +4,9 @@
     "SerialPort": 9,
     "BaundRate" : 115200,
     "OperatorName": "Александр Смолин",
-    "CompanyName" : "ИП Шаймарданова Гулия Зульфатовнаа",
-    "PlaceOfSettlement" : "422120, Село Янцобино",
     "Inn" : "",
-    "OpeningTime" : "9:00",
-    "CloseTime" : "21:00"
+    "OpeningTime" : "12:00",
+    "CloseTime" : "20:06"
   },
   "Printer": {
     "SerialPort": "COM6",

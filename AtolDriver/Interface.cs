@@ -5,6 +5,7 @@ using AtolDriver.models;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using Newtonsoft.Json.Linq;
 
 namespace AtolDriver
 {
@@ -31,10 +32,14 @@ namespace AtolDriver
             fptr.applySingleSettings();
         }
 
-        private int SendJson<T>(T request)
+        private void SendJson<T>(T request, out Answer answer)
         {
             fptr.setParam(Constants.LIBFPTR_PARAM_JSON_DATA, JsonConvert.SerializeObject(request));
-            return fptr.processJson();
+            answer = new Answer()
+            {
+                Code = fptr.processJson(),
+                Json = fptr.getParamString(Constants.LIBFPTR_PARAM_JSON_DATA)
+            };
         }
         
         /// <summary>
@@ -57,21 +62,36 @@ namespace AtolDriver
             fptr.queryData();
             return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_NUMBER)}";
         }
-        
-
-        // private int SendJson<T>(T request, out string answer)
-        // {
-        //     fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-        //     var code = fptr.queryData();
-        //     answer = $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE)}";
-        //     return code;
-        // }
-
+        public string GetFfdVersion()
+        {
+            fptr.setParam(Constants.LIBFPTR_PARAM_FN_DATA_TYPE, Constants.LIBFPTR_FNDT_FFD_VERSIONS);
+            fptr.fnQueryData();
+            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_FFD_VERSION)}";
+        }
+        public void SetDateTime()
+        {
+            fptr.setParam(Constants.LIBFPTR_PARAM_DATE_TIME, DateTime.Now);
+            fptr.writeDateTime();
+        }
+        /// <summary>
+        /// Получить серийный номер ккт
+        /// </summary>
+        /// <returns>Серийный номер</returns>
+        public string GetSerialNumber()
+        {
+            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            fptr.queryData();
+            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}";
+        }
         public int OpenConnection()
         {
             return fptr.open();
         }
-        
+
+        public int CloseConnection()
+        {
+            return fptr.close();
+        }
         /// <summary>
         /// Утсновка оператора на смену
         /// </summary>
@@ -85,28 +105,30 @@ namespace AtolDriver
                 Vatin = operatorInn
             };
         }
-        
-        /// <summary>
-        /// Проверка версии ффд
-        /// </summary>
-        /// <returns></returns>
-        public string GetFfdVersion()
-        {
-            fptr.setParam(Constants.LIBFPTR_PARAM_FN_DATA_TYPE, Constants.LIBFPTR_FNDT_FFD_VERSIONS);
-            fptr.fnQueryData();
-            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_FFD_VERSION)}";
-        }
-        
         /// <summary>
         /// Открыть смену
         /// </summary>
         /// <returns>код ошибки</returns>
-        public int OpenShift()
+        public OpenShiftInfo? OpenShift()
         {
-            return SendJson(new OpenShift
+            SendJson(new OpenShift
             {
                 Operator = cashier,
-            });
+            }, out var answer);
+
+            if (answer.Code == -1) return null;
+            JObject str = JObject.Parse(answer.Json);
+            JToken sort = str["fiscalParams"];
+            return sort != null ? sort.ToObject<OpenShiftInfo>() : null;
+        }
+        
+        /// <summary>
+        /// Отмена чека
+        /// </summary>
+        /// <returns></returns>
+        public int CanselReceipt()
+        {
+            return fptr.cancelReceipt();
         }
         
         /// <summary>
@@ -171,33 +193,53 @@ namespace AtolDriver
         /// Закрыть чек
         /// </summary>
         /// <returns>Код ошибки</returns>
-        public int CloseReceipt()
+        public ChequeInfo? CloseReceipt()
         {
-            return SendJson(receipt);
+            SendJson(receipt, out var answer);
+            if (answer.Code == -1) return null;
+            JObject str = JObject.Parse(answer.Json);
+            JToken sort = str["fiscalParams"];
+            return sort != null ? sort.ToObject<ChequeInfo>() : null;
         }
         
         /// <summary>
         /// Закрыть смену
         /// </summary>
         /// <returns>Код ошибки</returns>
-        public int CloseShift()
+        public CloseShiftsInfo? CloseShift()
         {
-            return SendJson(new CloseShift
+            SendJson(new CloseShift
             {
                 Type = "closeShift",
                 Operator = cashier
-            });
+            }, out var answer);
+
+            if (answer.Code == -1) return null;
+            JObject str = JObject.Parse(answer.Json);
+            return str != null ? str.ToObject<CloseShiftsInfo>() : null;
+        }
+        public CompanyInfo? GetCompanyInfo()
+        {
+            SendJson(new Company()
+            {
+                Type = "getRegistrationInfo",
+            }, out var answer);
+
+            if (answer.Code == -1) return null;
+            JObject str = JObject.Parse(answer.Json);
+            JToken sort = str["organization"];
+            return sort != null ? sort.ToObject<CompanyInfo>() : null;
         }
         
         /// <summary>
         /// Состояние смены
         /// </summary>
         /// <returns>0 - закрыта, 1 - октрыта</returns>
-        public string GetShiftStatus()
+        public uint GetShiftStatus()
         {
             fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
             var code = fptr.queryData();
-            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE)}";
+            return fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE);
         }
         
         /// <summary>
@@ -290,7 +332,6 @@ namespace AtolDriver
                     return "";
             }
         }
-
         
         public string GetStatus()
         {

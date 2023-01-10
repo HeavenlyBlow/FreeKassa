@@ -1,3 +1,10 @@
 ﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+	<s:Boolean x:Key="/Default/AddReferences/RecentPaths/=C_003A_005CUsers_005Candrey_005CRiderProjects_005CFreeKassa_005CAtolDriver_005CDLL_005CNET5_005CAtol_002EDrivers10_002EFptr_002Edll/@EntryIndexedValue">True</s:Boolean>
+	<s:String x:Key="/Default/CodeInspection/PencilsConfiguration/ActualSeverity/@EntryValue">INFO</s:String>
+	<s:String x:Key="/Default/Environment/AssemblyExplorer/XmlDocument/@EntryValue">&lt;AssemblyExplorer&gt;&#xD;
+  &lt;Assembly Path="C:\Users\andrey\.nuget\packages\system.drawing.common\5.0.3\ref\netcoreapp3.0\System.Drawing.Common.dll" /&gt;&#xD;
+  &lt;Assembly Path="C:\Users\andrey\.nuget\packages\system.drawing.common\5.0.3\ref\netstandard2.0\System.Drawing.Common.dll" /&gt;&#xD;
+  &lt;Assembly Path="C:\Users\andrey\RiderProjects\FreeKassa\AtolDriver\DLL\Framework\Atol.Drivers10.Fptr.dll" /&gt;&#xD;
+&lt;/AssemblyExplorer&gt;</s:String>
 	<s:Int64 x:Key="/Default/Environment/Hierarchy/Build/BuildTool/MsbuildVersion/@EntryValue">1114112</s:Int64>
 	<s:String x:Key="/Default/Environment/Hierarchy/Build/BuildTool/CustomBuildToolPath/@EntryValue">C:\Program Files\JetBrains\JetBrains Rider 2022.2.4\tools\MSBuild\Current\Bin\MSBuild.exe</s:String></wpf:ResourceDictionary>
