@@ -96,12 +96,12 @@ namespace FreeKassa
                 // var logBitmap = (Bitmap)Image.FromFile("Resources/Images/Logo.jpg");
                 // logBitmap.Save("Logo.png");
                 // var logo = ImageHelper.CenterAlign(logBitmap);
-                var logo = File.ReadAllBytes("Resources/Images/Logo.jpg");
+                // var logo = File.ReadAllBytes("Resources/Images/Logo.jpg");
                 k.PrintUsersDocument(new List<TicketModel>()
                 {
                     new TicketModel()
                     {
-                        Logo = logo,
+                        // Logo = logo,
                         Address = "Улица свободы 20",
                         DateTime = "22.10.2022 14:00",
                         Places = "Ряд 12 место 10",
@@ -109,7 +109,7 @@ namespace FreeKassa
                     },
                     new TicketModel()
                     {
-                        Logo = logo,
+                        // Logo = logo,
                         Address = "Улица свободы 20",
                         DateTime = "22.10.2022 14:00",
                         Places = "Ряд 12 место 11",
@@ -117,7 +117,7 @@ namespace FreeKassa
                     },
                     new TicketModel()
                     {
-                        Logo = logo,
+                        // Logo = logo,
                         Address = "Улица свободы 20",
                         DateTime = "22.10.2022 14:00",
                         Places = "Ряд 12 место 12",

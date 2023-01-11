@@ -5,6 +5,7 @@ using AtolDriver.models;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using AtolDriver.Utils;
 using Newtonsoft.Json.Linq;
 
 namespace AtolDriver
@@ -115,11 +116,11 @@ namespace AtolDriver
             {
                 Operator = cashier,
             }, out var answer);
-
+            
             if (answer.Code == -1) return null;
-            JObject str = JObject.Parse(answer.Json);
-            JToken sort = str["fiscalParams"];
-            return sort != null ? sort.ToObject<OpenShiftInfo>() : null;
+            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new OpenShiftInfo(), token: "fiscalParams");
+            if (jobj == null) return null;
+            return (OpenShiftInfo)jobj;
         }
         
         /// <summary>
@@ -197,9 +198,9 @@ namespace AtolDriver
         {
             SendJson(receipt, out var answer);
             if (answer.Code == -1) return null;
-            JObject str = JObject.Parse(answer.Json);
-            JToken sort = str["fiscalParams"];
-            return sort != null ? sort.ToObject<ChequeInfo>() : null;
+            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new ChequeInfo(), token: "fiscalParams");
+            if (jobj == null) return null;
+            return (ChequeInfo)jobj;
         }
         
         /// <summary>
@@ -215,8 +216,23 @@ namespace AtolDriver
             }, out var answer);
 
             if (answer.Code == -1) return null;
-            JObject str = JObject.Parse(answer.Json);
-            return str != null ? str.ToObject<CloseShiftsInfo>() : null;
+            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new CloseShiftsInfo());
+            if (jobj == null) return null;
+            return (CloseShiftsInfo)jobj;
+        }
+
+        public CountdownStatusInfo? CountdownStatus()
+        {
+            SendJson(new Countdown
+            {
+                Type = "reportOfdExchangeStatus",
+                Operator = cashier
+            }, out var answer);
+            
+            if (answer.Code == -1) return null;
+            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new CountdownStatusInfo());
+            if (jobj == null) return null;
+            return (CountdownStatusInfo)jobj;
         }
         public CompanyInfo? GetCompanyInfo()
         {
@@ -226,9 +242,9 @@ namespace AtolDriver
             }, out var answer);
 
             if (answer.Code == -1) return null;
-            JObject str = JObject.Parse(answer.Json);
-            JToken sort = str["organization"];
-            return sort != null ? sort.ToObject<CompanyInfo>() : null;
+            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new CompanyInfo(), token: "organization");
+            if (jobj == null) return null;
+            return (CompanyInfo)jobj;
         }
         
         /// <summary>

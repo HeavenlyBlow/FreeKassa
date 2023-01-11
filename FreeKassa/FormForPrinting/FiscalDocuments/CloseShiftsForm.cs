@@ -86,7 +86,11 @@ namespace FreeKassa.Printer.Templates
                 e.PrintLine(IdentHelper.ArrangeWords("ФН", $"{model.FiscalStorageRegisterNumber}",
                     IdentHelper.Style.FontB)),
                 e.PrintLine(IdentHelper.ArrangeWords("ФД", $"{model.FiscalDocumentNumber}", IdentHelper.Style.FontB)),
-                e.PrintLine(IdentHelper.ArrangeWords("ФП", $"{model.FiscalFeatureDocument}", IdentHelper.Style.FontB))
+                e.PrintLine(IdentHelper.ArrangeWords("ФП", $"{model.FiscalFeatureDocument}", IdentHelper.Style.FontB)),
+                e.PrintLine(""),
+                e.PrintLine(""),
+                e.PrintLine(""),
+                e.PrintLine("")
             );
         }
         

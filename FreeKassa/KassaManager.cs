@@ -15,7 +15,7 @@ using FreeKassa.Utils;
 
 namespace FreeKassa
 {
-    public class KassaManager
+    public class KassaManager : IDisposable
     {
         private KKTManager _kktManager;
         private PrinterManager _printerManager;
@@ -145,5 +145,9 @@ namespace FreeKassa
         // {
         //     return true;
         // }
+        public void Dispose()
+        {
+            _kktManager?.Dispose();
+        }
     }
 }

@@ -5,11 +5,11 @@
     "BaundRate" : 115200,
     "OperatorName": "Александр Смолин",
     "Inn" : "",
-    "OpeningTime" : "12:00",
-    "CloseTime" : "20:06"
+    "OpeningTime" : "14:45",
+    "CloseTime" : "18:46"
   },
   "Printer": {
-    "SerialPort": "COM6",
+    "SerialPort": "COM7",
     "BaundRate" : 115200
   },
   "CashValidator": {

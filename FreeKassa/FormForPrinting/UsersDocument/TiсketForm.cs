@@ -52,7 +52,7 @@ namespace FreeKassa.FormForPrinting.UsersDocument
         {
             return ByteSplicer.Combine(data,
                 vkp80ii.LeftAlign(),
-                vkp80ii.PrintImage(ticket.Logo, false, isLegacy: true),
+                // vkp80ii.PrintImage(ticket.Logo, false, isLegacy: true),
                 vkp80ii.PrintLine(""),
                 vkp80ii.PrintLine(""),
                 vkp80ii.CenterAlign(),
