@@ -207,7 +207,20 @@ namespace AtolDriver
         /// Закрыть смену
         /// </summary>
         /// <returns>Код ошибки</returns>
-        public CloseShiftsInfo? CloseShift()
+        // public CloseShiftsInfo? CloseShift()
+        // {
+        //     SendJson(new CloseShift
+        //     {
+        //         Type = "closeShift",
+        //         Operator = cashier
+        //     }, out var answer);
+        //
+        //     if (answer.Code == -1) return null;
+        //     var jobj = DeserializeHelper.Deserialize(answer.Json, model: new CloseShiftsInfo());
+        //     if (jobj == null) return null;
+        //     return (CloseShiftsInfo)jobj;
+        // }
+        public Answer CloseShift()
         {
             SendJson(new CloseShift
             {
@@ -216,9 +229,7 @@ namespace AtolDriver
             }, out var answer);
 
             if (answer.Code == -1) return null;
-            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new CloseShiftsInfo());
-            if (jobj == null) return null;
-            return (CloseShiftsInfo)jobj;
+            return answer;
         }
 
         public CountdownStatusInfo? CountdownStatus()
@@ -251,11 +262,11 @@ namespace AtolDriver
         /// Состояние смены
         /// </summary>
         /// <returns>0 - закрыта, 1 - октрыта</returns>
-        public uint GetShiftStatus()
+        public int GetShiftStatus()
         {
             fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
             var code = fptr.queryData();
-            return fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE);
+            return (int)fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE);
         }
         
         /// <summary>

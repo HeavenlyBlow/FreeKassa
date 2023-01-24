@@ -21,7 +21,7 @@ namespace FreeKassa
 
         public CashValidator(CashValidatorModel settings)
         {
-           c = new CashCodeBillValidator(settings.Port, settings.PortSpeed);
+           c = new CashCodeBillValidator(settings.SerialPort, settings.BaundRate);
         }
 
         public async Task StartWork()

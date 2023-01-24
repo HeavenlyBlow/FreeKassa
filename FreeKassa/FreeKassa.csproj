@@ -10,7 +10,7 @@
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Update="LastOpenShifts.txt">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Update="Resources\Images\ArlekinLogo.jpg">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>

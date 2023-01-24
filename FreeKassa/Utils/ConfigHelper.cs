@@ -11,48 +11,53 @@ namespace FreeKassa.Utils
 
     public static class ConfigHelper
     {
-        private static JObject _jObject;
+        private static string _jsonString;
 
-        private static JObject ReadJsonFile()
+        private static string ReadJsonFile()
         {
-            if (_jObject != null) return _jObject;
+            if (_jsonString != null) return _jsonString;
             var jsonFile = File.ReadAllText("configKassa.json");
-            _jObject = (JObject)JsonConvert.DeserializeObject(jsonFile);
-            return _jObject;
+            if (jsonFile == "") return null;
+            _jsonString = jsonFile;
+            return _jsonString;
         }
 
-        public static string GetPath(string jsonToken)
-        {
-            var jsonFile = File.ReadAllText("configKassa.json");
-            var jsonObj = (JObject)JsonConvert.DeserializeObject(jsonFile);
-            return ReadJsonFile().SelectToken(jsonToken).ToString();
-        }
+        // public static string GetPath(string jsonToken)
+        // {
+        //     var jsonFile = File.ReadAllText("configKassa.json");
+        //     var jsonObj = (JObject)JsonConvert.DeserializeObject(jsonFile);
+        //     return ReadJsonFile().SelectToken(jsonToken).ToString();
+        // }
         
-        public static object GetSettings(string jsonToken)
+        public static SettingsModel GetSettings()
         {
-            if (jsonToken == "") return new object();
             var js = ReadJsonFile();
-            return jsonToken switch
-            {
-                "KKT" => Deserialize(model: new KKTModel(), jsonToken, js),
-                "Printer" => Deserialize(model: new PrinterModel(), jsonToken, js),
-                "CashValidator" => Deserialize(model: new CashValidatorModel(), jsonToken, js),
-                _ => new object()
-            };
+            return js == null ? null : JsonConvert.DeserializeObject<SettingsModel>(js);
+
+
+            // if (jsonToken == "") return new object();
+            // var js = ReadJsonFile();
+            // return jsonToken switch
+            // {
+            //     "KKT" => Deserialize(model: new KKTModel(), jsonToken, js),
+            //     "Printer" => Deserialize(model: new PrinterModel(), jsonToken, js),
+            //     "CashValidator" => Deserialize(model: new CashValidatorModel(), jsonToken, js),
+            //     _ => new object()
+            // };
         }
         
-        private static object Deserialize(object model, string token, JObject str)
-        {
-            JToken sort = str[token];
-            if (sort == null) return new object();
-            return model switch
-            {
-                KKTModel => sort?.ToObject<KKTModel>(),
-                PrinterModel => sort?.ToObject<PrinterModel>(),
-                CashValidatorModel => sort?.ToObject<CashValidatorModel>(),
-                _ => new object()
-            };
-        }
+        // private static object Deserialize(object model, string token, JObject str)
+        // {
+        //     JToken sort = str[token];
+        //     if (sort == null) return new object();
+        //     return model switch
+        //     {
+        //         KKTModel => sort?.ToObject<KKTModel>(),
+        //         PrinterModel => sort?.ToObject<PrinterModel>(),
+        //         CashValidatorModel => sort?.ToObject<CashValidatorModel>(),
+        //         _ => new object()
+        //     };
+        // }
         //
         // private static PrinterModel ReturnPrinterSettings()
         // {

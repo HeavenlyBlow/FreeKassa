@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AtolDriver;
 using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
+using FreeKassa.Extensions.KassaManagerExceptions;
 using FreeKassa.Extensions.KKTExceptions;
 using FreeKassa.FormForPrinting.UsersDocument;
 using FreeKassa.KKT;
@@ -20,9 +21,7 @@ namespace FreeKassa
         private KKTManager _kktManager;
         private PrinterManager _printerManager;
         private CashValidator _validator;
-
         private bool _payment;
-
         private double _paymentCost;
         //TODO задел на то что надо будет самому управлять сменой
         private bool _manualShiftManagement = false;
@@ -34,19 +33,18 @@ namespace FreeKassa
 
         public bool StartKassa()
         {
-            var kktSettings = (KKTModel)ConfigHelper.GetSettings("KKT");
-            var cashValidatorSettings = (CashValidatorModel) ConfigHelper.GetSettings("CashValidator");
-            _validator = new CashValidator(cashValidatorSettings);
-            if (kktSettings.PrinterManagement == 0)
+            var settings = ConfigHelper.GetSettings();
+            if (settings == null) throw new SettingsExceptions("Не удалось получить настройки кассы");
+            _validator = new CashValidator(settings.CashValidator);
+            if (settings.KKT.PrinterManagement == 0)
             {
-                var printerSettings = (PrinterModel)ConfigHelper.GetSettings("Printer");
                 _vkp80Ii = new EPSON();
-                _printerManager = new PrinterManager(_vkp80Ii, printerSettings);
-                _kktManager = new KKTManager(_manualShiftManagement, _printerManager, kktSettings);
+                _printerManager = new PrinterManager(_vkp80Ii, settings.Printer);
+                _kktManager = new KKTManager(_manualShiftManagement, _printerManager, settings.KKT);
             }
             else
             {
-                _kktManager = new KKTManager(kktSettings);
+                _kktManager = new KKTManager(settings.KKT);
             }
             
             return true;
@@ -87,16 +85,11 @@ namespace FreeKassa
             if (_printerManager == null)
             {
                 if (_vkp80Ii == null) _vkp80Ii = new EPSON();
-                _printerManager = new PrinterManager(_vkp80Ii, (PrinterModel)ConfigHelper.GetSettings("Printer"));
+                _printerManager = new PrinterManager(_vkp80Ii, ConfigHelper.GetSettings().Printer);
             }
             
             _printerManager.Print(models: tikets);
             
-            // foreach (var tiket in tikets)
-            // {
-            //     _printerManager.Print(tiket);
-            //     Task.Delay(20000);
-            // }
 
             return true;
         }

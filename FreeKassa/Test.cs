@@ -16,10 +16,18 @@ namespace FreeKassa
     public class Test
     {
         
-        
 
         public static void Main(string[] args)
         {
+            
+            
+            //var k = new KassaManager();
+            //k.StartKassa();
+            
+            //var it = test2.DataAboutCloseShift();
+            
+            
+            
             // var _kktModel = (KKTModel)ConfigHelper.GetSettings("KKT");
             // var inter = new Interface(_kktModel.Port, _kktModel.PortSpeed);
             // inter.OpenConnection();
@@ -59,8 +67,10 @@ namespace FreeKassa
             
             
             
-            var k = new KassaManager();
+            
 
+            //var lis = GetTicket();
+            
             // k.StartKassa();
             
             
@@ -89,41 +99,12 @@ namespace FreeKassa
             //         Name = "Золотой ключик"
             //     }
             // });
-            
+
+            var k = new KassaManager();
             k.StartKassa();
             k.SuccessfullyReceipt += (sender, eventArgs) =>
             {
-                // var logBitmap = (Bitmap)Image.FromFile("Resources/Images/Logo.jpg");
-                // logBitmap.Save("Logo.png");
-                // var logo = ImageHelper.CenterAlign(logBitmap);
-                // var logo = File.ReadAllBytes("Resources/Images/Logo.jpg");
-                k.PrintUsersDocument(new List<TicketModel>()
-                {
-                    new TicketModel()
-                    {
-                        // Logo = logo,
-                        Address = "Улица свободы 20",
-                        DateTime = "22.10.2022 14:00",
-                        Places = "Ряд 12 место 10",
-                        Name = "Золотой ключик"
-                    },
-                    new TicketModel()
-                    {
-                        // Logo = logo,
-                        Address = "Улица свободы 20",
-                        DateTime = "22.10.2022 14:00",
-                        Places = "Ряд 12 место 11",
-                        Name = "Золотой ключик"
-                    },
-                    new TicketModel()
-                    {
-                        // Logo = logo,
-                        Address = "Улица свободы 20",
-                        DateTime = "22.10.2022 14:00",
-                        Places = "Ряд 12 место 12",
-                        Name = "Золотой ключик"
-                    }
-                });
+                //k.PrintUsersDocument(lis);
             };
             k.RegisterReceipt(false, new ReceiptModel()
                 {
@@ -151,7 +132,94 @@ namespace FreeKassa
             );
             
             Console.ReadKey();
+            
+            k.RegisterReceipt(false, new ReceiptModel()
+                {
+                    isElectron = false,
+                    TaxationType = TaxationTypeEnum.Osn,
+                    TypeReceipt = TypeReceipt.Sell
+                }, 
+                new List<BasketModel>() 
+                { 
+                    new BasketModel() 
+                    {
+                        Cost = 10,
+                        MeasurementUnit = MeasurementUnitEnum.Piece,
+                        Name = "Фотографии",
+                        PaymentObject = PaymentObjectEnum.Service,
+                        Quantity = 5,
+                        TaxType = TaxTypeEnum.Vat10
+                    }
+                },
+                new PayModel()
+                {
+                    PaymentType = PaymentTypeEnum.cash,
+                    Sum = 50
+                }
+            );
+            
+            Console.ReadKey();
+            
+            k.RegisterReceipt(false, new ReceiptModel()
+                {
+                    isElectron = false,
+                    TaxationType = TaxationTypeEnum.Osn,
+                    TypeReceipt = TypeReceipt.Sell
+                }, 
+                new List<BasketModel>() 
+                { 
+                    new BasketModel() 
+                    {
+                        Cost = 10,
+                        MeasurementUnit = MeasurementUnitEnum.Piece,
+                        Name = "Фотографии",
+                        PaymentObject = PaymentObjectEnum.Service,
+                        Quantity = 5,
+                        TaxType = TaxTypeEnum.Vat10
+                    }
+                },
+                new PayModel()
+                {
+                    PaymentType = PaymentTypeEnum.cash,
+                    Sum = 50
+                }
+            );
+            
+            Console.ReadKey();
         }
+        
+        private static List<TicketModel> GetTicket()
+        {
+            return new List<TicketModel>()
+            {
+                new TicketModel()
+                {
+                    // Logo = logo,
+                    Address = "Улица свободы 20",
+                    DateTime = "22.10.2022 14:00",
+                    Places = "Ряд 12 место 10",
+                    Name = "Золотой ключик"
+                },
+                new TicketModel()
+                {
+                    // Logo = logo,
+                    Address = "Улица свободы 20",
+                    DateTime = "22.10.2022 14:00",
+                    Places = "Ряд 12 место 11",
+                    Name = "Золотой ключик"
+                },
+                new TicketModel()
+                {
+                    // Logo = logo,
+                    Address = "Улица свободы 20",
+                    DateTime = "22.10.2022 14:00",
+                    Places = "Ряд 12 место 12",
+                    Name = "Золотой ключик"
+                }
+            };
+        }
+        
     }
+    
     
 }

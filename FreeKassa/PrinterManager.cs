@@ -17,12 +17,12 @@ namespace FreeKassa
     {
         private SerialPrinter _serialPrinter;
         private EPSON _vkp80ii;
-        private readonly PrinterModel _printerModel;
+        private readonly Model.Printer _printerModel;
 
-        public PrinterManager(EPSON printer, PrinterModel printerSettings)
+        public PrinterManager(EPSON printer, Model.Printer printerSettings)
         {
             _printerModel = printerSettings;
-            _serialPrinter = new SerialPrinter(_printerModel.Port, _printerModel.PortSpeed);
+            _serialPrinter = new SerialPrinter(_printerModel.SerialPort, _printerModel.BaundRate);
             _vkp80ii = printer;
 
         }

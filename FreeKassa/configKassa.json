@@ -3,13 +3,22 @@
     "PrinterManagement": 0,
     "SerialPort": 9,
     "BaundRate" : 115200,
-    "OperatorName": "Александр Смолин",
+    "OperatorName": "Кассир 1",
     "Inn" : "",
-    "OpeningTime" : "14:45",
-    "CloseTime" : "18:46"
+    "Shift": {
+      "NonStopWork": {
+        "On" : 1,
+        "ShiftChangeTime" : "13:44"
+      },
+      "WorkKWithBreaks": {
+        "On" : 0,
+        "OpeningTime" : "10:58",
+        "CloseTime" : "10:55"
+      }
+    }
   },
   "Printer": {
-    "SerialPort": "COM7",
+    "SerialPort": "COM6",
     "BaundRate" : 115200
   },
   "CashValidator": {
