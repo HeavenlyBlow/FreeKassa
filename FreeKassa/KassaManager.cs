@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using AtolDriver;
+using AtolDriver.models;
 using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
 using FreeKassa.Extensions.KassaManagerExceptions;
@@ -50,11 +51,21 @@ namespace FreeKassa
             return true;
         }
         //TODO запускать в другом потоке и инвочить результат
-        public void RegisterReceipt(bool printReceipt,ReceiptModel receiptType, List<BasketModel> basket, PayModel pay)
+        
+        /// <summary>
+        /// Фискализация чека
+        /// </summary>
+        /// <param name="receiptType">Тип чека</param>
+        /// <param name="basket">Товары</param>
+        /// <param name="pay">Тип оплаты</param>
+        /// <param name="clientInfo">Информация о клиенте (Обязательно
+        ///передавать если выбран режим расчеты только в интернете</param>
+        public void RegisterReceipt(ReceiptModel receiptType, 
+            List<BasketModel> basket, PayModel pay, ClientInfo clientInfo = null)
         {
             Task task = Task.Run((() =>
             {
-                _kktManager.OpenReceipt(receiptType);
+                _kktManager.OpenReceipt(receiptType, clientInfo);
             
                 foreach (var product in basket)
                 {

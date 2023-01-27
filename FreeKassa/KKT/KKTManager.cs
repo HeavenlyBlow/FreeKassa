@@ -19,6 +19,7 @@ namespace FreeKassa.KKT
         private Model.KKT _kktModel;
         private Interface _interface;
         private Timer _timer;
+        private object locker = new();
         private bool _manualShiftManagement;
         private readonly PrinterManager _printerManager;
         public Interface Interface
@@ -364,12 +365,12 @@ namespace FreeKassa.KKT
                         model.AmountReturnReceiptInComingFnResult = split[1].Trim();
                         break;
                     }
-                    case 62:
-                    {
-                        var split = documentArray[i].Split(':');
-                        model.CorrectionChecksFnResult = split[1].Trim();
-                        break;
-                    }
+                    // case 62:
+                    // {
+                    //     var split = documentArray[i].Split(':');
+                    //     model.CorrectionChecksFnResult = split[1].Trim();
+                    //     break;
+                    // }
                 } 
                 }
                 return model;
@@ -787,8 +788,11 @@ namespace FreeKassa.KKT
         }
         private void ShiftsControl()
         {
-            if (_kktModel.Shift.WorkKWithBreaks.On == 1) WorkKWithBreaksShiftsControl();
-            else NonStopWorkShiftsControl();
+            lock (locker)
+            {
+                if (_kktModel.Shift.WorkKWithBreaks.On == 1) WorkKWithBreaksShiftsControl();
+                else NonStopWorkShiftsControl();
+            }
         }
 
         private void WorkKWithBreaksShiftsControl()
@@ -849,7 +853,11 @@ namespace FreeKassa.KKT
                 }
                 return;
             }
-            StartShifts();
+
+            if (status == 2)
+            {
+                StartShifts();
+            }
         }
 
         private void UpdateModel()
@@ -873,13 +881,13 @@ namespace FreeKassa.KKT
             if(_printerManager != null) _printerManager.Print(DataAboutCloseShift());
             return true;
         }
-        public void OpenReceipt(ReceiptModel receiptType)
+        public void OpenReceipt(ReceiptModel receiptType, ClientInfo clientInfo = null)
         {
             _interface.CloseReceipt();
             var status = _interface.GetShiftStatus();
             if (status == 0) throw new ShiftException("Смена закрыта!");
             if (status == 2) throw new ShiftException("Смена истекла!");
-            _interface.OpenReceipt(receiptType.isElectron, receiptType.TypeReceipt, receiptType.TaxationType);
+            _interface.OpenReceipt(receiptType.isElectron,receiptType.TypeReceipt, receiptType.TaxationType, clientInfo);
         }
         public void AddProduct(BasketModel product)
         {
@@ -897,7 +905,8 @@ namespace FreeKassa.KKT
             if (pay.Sum == 0) throw new PayException("Оплата должна быть больше 0!");
             _interface.Pay(pay.PaymentType, pay.Sum);
         }
-        public void CloseReceipt(PayModel pay, List<BasketModel> basketModels, ReceiptModel receiptModel)
+        public void CloseReceipt(PayModel pay, List<BasketModel> basketModels,
+            ReceiptModel receiptModel, ClientInfo clientInfo = null)
         {
             var chequeInfo = _interface.CloseReceipt();
             if (chequeInfo == null) throw new ChequeException(_interface.ReadError());
@@ -910,7 +919,7 @@ namespace FreeKassa.KKT
         {
             int num = 0; 
             TimerCallback tm = new TimerCallback(CheckTime); 
-            _timer = new Timer(tm,num, 10000, 50000);
+            _timer = new Timer(tm,num, 11000, 50000);
         }
         private void CheckTime(object source)
         {

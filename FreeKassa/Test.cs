@@ -106,7 +106,38 @@ namespace FreeKassa
             {
                 //k.PrintUsersDocument(lis);
             };
-            k.RegisterReceipt(false, new ReceiptModel()
+            k.RegisterReceipt(new ReceiptModel()
+                {
+                    isElectron = false,
+                    TaxationType = TaxationTypeEnum.Osn,
+                    TypeReceipt = TypeReceipt.Sell
+                }, 
+                new List<BasketModel>() 
+                { 
+                    new BasketModel() 
+                    {
+                        Cost = 2900,
+                        MeasurementUnit = MeasurementUnitEnum.Piece,
+                        Name = "Футболка «LOVE»",
+                        PaymentObject = PaymentObjectEnum.Commodity,
+                        Quantity = 1,
+                        TaxType = TaxTypeEnum.Vat20
+                    }
+                },
+                new PayModel()
+                {
+                    PaymentType = PaymentTypeEnum.electronically,
+                    Sum = 2900
+                }
+                // new ClientInfo()
+                // {
+                //     EmailOrPhone = "+79991891088"
+                // }
+            );
+            
+            Console.ReadKey();
+            
+            k.RegisterReceipt( new ReceiptModel()
                 {
                     isElectron = false,
                     TaxationType = TaxationTypeEnum.Osn,
@@ -133,34 +164,7 @@ namespace FreeKassa
             
             Console.ReadKey();
             
-            k.RegisterReceipt(false, new ReceiptModel()
-                {
-                    isElectron = false,
-                    TaxationType = TaxationTypeEnum.Osn,
-                    TypeReceipt = TypeReceipt.Sell
-                }, 
-                new List<BasketModel>() 
-                { 
-                    new BasketModel() 
-                    {
-                        Cost = 10,
-                        MeasurementUnit = MeasurementUnitEnum.Piece,
-                        Name = "Фотографии",
-                        PaymentObject = PaymentObjectEnum.Service,
-                        Quantity = 5,
-                        TaxType = TaxTypeEnum.Vat10
-                    }
-                },
-                new PayModel()
-                {
-                    PaymentType = PaymentTypeEnum.cash,
-                    Sum = 50
-                }
-            );
-            
-            Console.ReadKey();
-            
-            k.RegisterReceipt(false, new ReceiptModel()
+            k.RegisterReceipt( new ReceiptModel()
                 {
                     isElectron = false,
                     TaxationType = TaxationTypeEnum.Osn,

@@ -131,20 +131,23 @@ namespace AtolDriver
         {
             return fptr.cancelReceipt();
         }
-        
+
         /// <summary>
         /// Открыть чек
         /// </summary>
         /// <param name="isElectronicReceipt">Это электронный чек?</param>
         /// <param name="typeReceiptEnum">Тип чека</param>
         /// <param name="taxationTypeEnum">Тип налогообложения</param>
-        public void OpenReceipt(bool isElectronicReceipt,TypeReceipt typeReceiptEnum, TaxationTypeEnum taxationTypeEnum)
+        /// <param name="client">Информация о клиенте </param>
+        public void OpenReceipt(bool isElectronicReceipt ,TypeReceipt typeReceiptEnum ,
+            TaxationTypeEnum taxationTypeEnum, ClientInfo? client = null)
         {
             receipt = new Receipt
             {
                 Type = GetTypeReceipt(typeReceiptEnum),
                 TaxationType = GetTaxType(taxationTypeEnum),
                 Operator = cashier,
+                Client = client,
                 Items = new List<Item>(),
                 Payments = new List<Payments>(),
                 Electronic = isElectronicReceipt
@@ -197,7 +200,7 @@ namespace AtolDriver
         public ChequeInfo? CloseReceipt()
         {
             SendJson(receipt, out var answer);
-            if (answer.Code == -1) return null;
+            if (answer.Code == -1) { return null; }
             var jobj = DeserializeHelper.Deserialize(answer.Json, model: new ChequeInfo(), token: "fiscalParams");
             if (jobj == null) return null;
             return (ChequeInfo)jobj;
@@ -529,7 +532,6 @@ namespace AtolDriver
         /// </summary>
         Vat120
     }
-
     public enum PaymentObjectEnum
     {
         /// <summary>
@@ -573,7 +575,6 @@ namespace AtolDriver
         /// </summary>
         CommodityWithMarking,
     }
-
     public enum MeasurementUnitEnum
     {
         Piece,
@@ -588,7 +589,6 @@ namespace AtolDriver
         Milliliter,
         Liter,
     }
-    
     public enum TaxationTypeEnum
     {
         /// <summary>
@@ -613,7 +613,6 @@ namespace AtolDriver
         TtPatent
         
     }
-
     public enum TypeReceipt
     {
         /// <summary>

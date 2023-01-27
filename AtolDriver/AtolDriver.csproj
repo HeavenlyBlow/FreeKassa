@@ -24,5 +24,9 @@
         <HintPath>DLL\NET5\Atol.Drivers10.Fptr.dll</HintPath>
       </Reference>
     </ItemGroup>
+
+<!--    <ItemGroup>-->
+<!--      <ProjectReference Include="..\FreeKassa\FreeKassa.csproj" />-->
+<!--    </ItemGroup>-->
     
 </Project>

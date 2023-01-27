@@ -13,6 +13,9 @@ namespace AtolDriver.models
 
         [JsonProperty("operator")]
         public Operator Operator { get; set; }
+        
+        [JsonProperty("clientInfo")]
+        public ClientInfo? Client { get; set; }
 
         [JsonProperty("items")]
         public List<Item> Items { get; set; }
