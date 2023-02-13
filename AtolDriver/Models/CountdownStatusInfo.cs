@@ -15,7 +15,7 @@ public class CountdownStatusInfo
     public Warnings Warnings { get; set; }
     
 }
-    public class Buy
+    public partial class Buy : CountBase
     {
         public int corrections { get; set; }
         public int count { get; set; }
@@ -36,7 +36,7 @@ public class CountdownStatusInfo
         public int sum { get; set; }
     }
 
-    public class BuyReturn
+    public partial class BuyReturn : CountBase
     {
         public int corrections { get; set; }
         public int count { get; set; }
@@ -153,7 +153,7 @@ public class CountdownStatusInfo
         public Warnings warnings { get; set; }
     }
 
-    public class Sell
+    public class Sell : CountBase
     {
         public int corrections { get; set; }
         public int count { get; set; }
@@ -174,7 +174,7 @@ public class CountdownStatusInfo
         public int sum { get; set; }
     }
 
-    public class SellReturn
+    public class SellReturn : CountBase
     {
         public int corrections { get; set; }
         public int count { get; set; }

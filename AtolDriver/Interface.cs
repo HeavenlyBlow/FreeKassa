@@ -210,7 +210,20 @@ namespace AtolDriver
         /// Закрыть смену
         /// </summary>
         /// <returns>Код ошибки</returns>
-        // public CloseShiftsInfo? CloseShift()
+        public CloseShiftsInfo? CloseShift()
+        {
+            SendJson(new CloseShift
+            {
+                Type = "closeShift",
+                Operator = cashier
+            }, out var answer);
+        
+            if (answer.Code == -1) return null;
+            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new CloseShiftsInfo());
+            if (jobj == null) return null;
+            return (CloseShiftsInfo)jobj;
+        }
+        // public Answer CloseShift()
         // {
         //     SendJson(new CloseShift
         //     {
@@ -219,21 +232,8 @@ namespace AtolDriver
         //     }, out var answer);
         //
         //     if (answer.Code == -1) return null;
-        //     var jobj = DeserializeHelper.Deserialize(answer.Json, model: new CloseShiftsInfo());
-        //     if (jobj == null) return null;
-        //     return (CloseShiftsInfo)jobj;
+        //     return answer;
         // }
-        public Answer CloseShift()
-        {
-            SendJson(new CloseShift
-            {
-                Type = "closeShift",
-                Operator = cashier
-            }, out var answer);
-
-            if (answer.Code == -1) return null;
-            return answer;
-        }
 
         public CountdownStatusInfo? CountdownStatus()
         {
@@ -250,7 +250,7 @@ namespace AtolDriver
         }
         public CompanyInfo? GetCompanyInfo()
         {
-            SendJson(new Company()
+            SendJson(new Request()
             {
                 Type = "getRegistrationInfo",
             }, out var answer);
@@ -270,6 +270,32 @@ namespace AtolDriver
             fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
             var code = fptr.queryData();
             return (int)fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE);
+        }
+
+        public FnStatus? GetFnStatus()
+        {
+            SendJson(new Request()
+            {
+                Type = "getFnStatus",
+            }, out var answer);
+
+            if (answer.Code == -1) return null;
+            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new FnStatus());
+            if (jobj == null) return null;
+            return (FnStatus)jobj;
+        }
+        
+        public ShiftTotals? GetShiftsTotal()
+        {
+            SendJson(new Request()
+            {
+                Type = "getShiftTotals",
+            }, out var answer);
+
+            if (answer.Code == -1) return null;
+            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new ShiftTotals());
+            if (jobj == null) return null;
+            return (ShiftTotals)jobj;
         }
         
         /// <summary>

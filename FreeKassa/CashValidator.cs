@@ -6,29 +6,39 @@ using System.Threading.Tasks;
 using CashCode.Net;
 using FreeKassa.Extensions;
 using FreeKassa.Model;
+using FreeKassa.Utils;
 
 namespace FreeKassa
 {
     public class CashValidator
     {
         public int Sum = 0;
+        private int RequiredAmount = 0;
+        private SimpleLogger _logger;
+        public bool isConnected;
         
         //TODO это для теста
         // public int Sum = 10;
 
         private CashCodeBillValidator c;
-        public event EventHandler NewCashEvent;
+        // public event EventHandler NewCashEvent;
 
-        public CashValidator(CashValidatorModel settings)
+        public delegate void CashAccepted(int sum);
+        public delegate void EndWork();
+        public event CashAccepted Accepted;
+        public event EndWork End;
+        
+
+        public CashValidator(CashValidatorModel settings , SimpleLogger logger)
         {
-           c = new CashCodeBillValidator(settings.SerialPort, settings.BaundRate);
+            _logger = logger;
+            c = new CashCodeBillValidator(settings.SerialPort, settings.BaundRate);
         }
 
-        public async Task StartWork()
+        public void StartWork(int sum)
         {
-            //TODO это для теста
-            // NewCashEvent.Invoke(null, null);
-            //return;
+            RequiredAmount = sum;
+            _logger.Info("Запущен кешкодер");
             try
             {
                 c.BillReceived += new BillReceivedHandler(c_BillReceived);
@@ -36,8 +46,9 @@ namespace FreeKassa
                 c.BillCassetteStatusEvent += new BillCassetteHandler(c_BillCassetteStatusEvent);
                 c.BillException += new BillExceptionHandler(c_BillException);
                 c.ConnectBillValidator();
+                isConnected = c.IsConnected;
 
-                if (c.IsConnected)
+                if (isConnected)
                 {
                     c.PowerUpBillValidator();
                     c.StartListening();
@@ -50,11 +61,11 @@ namespace FreeKassa
                     Console.ReadKey();
                     c.RejectBill();
                     c.StopListening();
-                    await Task.Delay(10);
                 }
                 else
                 {
-                    throw new ValidatorConnectionExceptions("Отсутсвует подключение к купюроприемнику");
+                    _logger.Fatal("Кушекодер не подключен");
+                    // throw new ValidatorConnectionExceptions("Отсутсвует подключение к купюроприемнику");
                 }
 
                 //c.Dispose();
@@ -65,18 +76,18 @@ namespace FreeKassa
             }
         }
 
-         void c_BillCassetteStatusEvent(object Sender, BillCassetteEventArgs e)
+        void c_BillCassetteStatusEvent(object Sender, BillCassetteEventArgs e)
         {
             Console.WriteLine(e.Status.ToString());
         }
 
-         void c_BillStacking(object Sender, BillStackedEventArgs e)
+        void c_BillStacking(object Sender, BillStackedEventArgs e)
         {
-            Console.WriteLine("Купюра в стеке");
+            // Console.WriteLine("Купюра в стеке");
+            _logger.Info("Купюра в стеке");
 
             e.Hold = true;
-
-
+            
             //if (Sum > 100)
             //{ 
             //    e.Cancel = true;
@@ -84,17 +95,26 @@ namespace FreeKassa
             //}
         }
 
-         void c_BillReceived(object Sender, BillReceivedEventArgs e)
+        void c_BillReceived(object Sender, BillReceivedEventArgs e)
         {
             if (e.Status == BillRecievedStatus.Rejected)
             {
+                _logger.Info("Купюра не принята");
                 Console.WriteLine(e.RejectedReason);
             }
             else if (e.Status == BillRecievedStatus.Accepted)
             {
                 Sum += e.Value;
+                _logger.Info($"Купюра: {e.Value} принята");
                 //MessageBox.Show("Сумма " + Sum);
-                NewCashEvent.Invoke(null, null);
+                Accepted!.Invoke(Sum);
+
+                if (RequiredAmount >= Sum)
+                {
+                    StopWork();
+                }
+                
+                // NewCashEvent.Invoke(null, null);
                 //Console.WriteLine("Bill accepted! " + e.Value + " руб. Общая сумму: " + Sum.ToString());
             }
         }
@@ -105,25 +125,20 @@ namespace FreeKassa
         //    c.DisableBillValidator();
         //    Sum = 0;
         //}
-        
+
         void c_BillException(object Sender, BillExceptionEventArgs e)
         {
             Console.WriteLine(e.Message);
             c.Dispose();
         }
 
-        public async Task StopWork()
+        public void StopWork()
         {
-            try
-            {
-
-                c.DisableBillValidator();
-                c.Dispose();
-            }
-            catch
-            {
-
-            }
+            c.DisableBillValidator();
+            Sum = 0;
+            c.Dispose();
+            _logger.Info("Кешкодер отключен");
+            End!.Invoke();
         }
     }
 }

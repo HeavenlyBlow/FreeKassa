@@ -5,6 +5,7 @@ using System.IO;
 using System.Threading;
 using AtolDriver;
 using AtolDriver.models;
+using AtolDriver.Utils;
 using ESCPOS_NET.Utils;
 using FreeKassa.Model;
 using FreeKassa.Model.PrinitngDocumensModel;
@@ -19,10 +20,13 @@ namespace FreeKassa
 
         public static void Main(string[] args)
         {
+            var str = File.ReadAllText("test2.json");
+            var jobj = DeserializeHelper.Deserialize(str, model: new CountdownStatusInfo());
             
             
-            //var k = new KassaManager();
-            //k.StartKassa();
+            
+            var k = new KassaManager();
+            k.StartKassa();
             
             //var it = test2.DataAboutCloseShift();
             
@@ -100,12 +104,8 @@ namespace FreeKassa
             //     }
             // });
 
-            var k = new KassaManager();
-            k.StartKassa();
-            k.SuccessfullyReceipt += (sender, eventArgs) =>
-            {
-                //k.PrintUsersDocument(lis);
-            };
+            
+                        
             k.RegisterReceipt(new ReceiptModel()
                 {
                     isElectron = false,

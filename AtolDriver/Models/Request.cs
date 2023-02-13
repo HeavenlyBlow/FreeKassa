@@ -2,7 +2,7 @@
 
 namespace AtolDriver.models;
 
-public class Company
+public class Request
 {
     [JsonProperty("type")]
     public string Type { get; set; }

@@ -28,26 +28,41 @@ namespace FreeKassa
         private bool _manualShiftManagement = false;
         private EPSON _vkp80Ii;
         private int _onKktPrinterManagement;
-
+        private readonly SimpleLogger _simpleLogger;
         public event EventHandler SuccessfullyReceipt;
-        
 
+
+        public KassaManager()
+        {
+            _simpleLogger = new SimpleLogger();
+        }
+
+        public CashValidator CashValidator
+        {
+            get => _validator;
+        }
+        
         public bool StartKassa()
         {
+            _simpleLogger.Info("Касса запускается");
             var settings = ConfigHelper.GetSettings();
-            if (settings == null) throw new SettingsExceptions("Не удалось получить настройки кассы");
-            _validator = new CashValidator(settings.CashValidator);
+            if (settings == null)
+            {
+                _simpleLogger.Fatal("SettingsExceptions: Не удалось получить настройки кассы");
+                throw new SettingsExceptions("Не удалось получить настройки кассы");
+            }
+            _validator = new CashValidator(settings.CashValidator, _simpleLogger);
             if (settings.KKT.PrinterManagement == 0)
             {
                 _vkp80Ii = new EPSON();
                 _printerManager = new PrinterManager(_vkp80Ii, settings.Printer);
-                _kktManager = new KKTManager(_manualShiftManagement, _printerManager, settings.KKT);
+                _kktManager = new KKTManager(_manualShiftManagement, _printerManager, settings.KKT, _simpleLogger);
             }
             else
             {
-                _kktManager = new KKTManager(settings.KKT);
+                _kktManager = new KKTManager(settings.KKT, _simpleLogger);
             }
-            
+            _simpleLogger.Info("Касса запущена");
             return true;
         }
         //TODO запускать в другом потоке и инвочить результат
