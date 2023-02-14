@@ -1,6 +1,6 @@
 ﻿{
   "KKT": {
-    "PrinterManagement": 0,
+    "PrinterManagement": 1,
     "SerialPort": 9,
     "BaundRate" : 115200,
     "OperatorName": "Кассир 1",

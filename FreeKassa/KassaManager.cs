@@ -19,6 +19,7 @@ namespace FreeKassa
 {
     public class KassaManager : IDisposable
     {
+        private object _locker = new object();
         private KKTManager _kktManager;
         private PrinterManager _printerManager;
         private CashValidator _validator;
@@ -78,32 +79,21 @@ namespace FreeKassa
         public void RegisterReceipt(ReceiptModel receiptType, 
             List<BasketModel> basket, PayModel pay, ClientInfo clientInfo = null)
         {
-            Task task = Task.Run((() =>
+            Task.Run((() =>
             {
                 _kktManager.OpenReceipt(receiptType, clientInfo);
-            
+        
                 foreach (var product in basket)
                 {
                     _kktManager.AddProduct(product);
                 }
-                // if (!AcceptPayment(pay)) throw new PayException("Ошибка оплаты");
+                
                 _kktManager.AddPay(pay);
                 _kktManager.CloseReceipt(pay, basket, receiptType);
-                SuccessfullyReceipt!.Invoke(null, null!);
+                
+                SuccessfullyReceipt?.Invoke(null, null!);
             }));
             
-            // _kktManager.OpenReceipt(receiptType);
-            //
-            // foreach (var product in basket)
-            // {
-            //     _kktManager.AddProduct(product);
-            // }
-            // // if (!AcceptPayment(pay)) throw new PayException("Ошибка оплаты");
-            // _kktManager.AddPay(pay);
-            // _kktManager.CloseReceipt(pay, basket, receiptType);
-            // SuccessfullyReceipt!.Invoke(null, null!);
-            // if (!printReceipt) return true;
-            // return true;
         }
 
         public bool PrintUsersDocument(IEnumerable<TicketModel> tikets)

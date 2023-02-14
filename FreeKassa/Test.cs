@@ -104,17 +104,21 @@ namespace FreeKassa
             //     }
             // });
 
-            
-                        
+
+            k.SuccessfullyReceipt += (sender, eventArgs) =>
+            {
+                Console.WriteLine("Регистрация успешна");
+            };
+
             k.RegisterReceipt(new ReceiptModel()
                 {
                     isElectron = false,
                     TaxationType = TaxationTypeEnum.Osn,
                     TypeReceipt = TypeReceipt.Sell
-                }, 
-                new List<BasketModel>() 
-                { 
-                    new BasketModel() 
+                },
+                new List<BasketModel>()
+                {
+                    new BasketModel()
                     {
                         Cost = 2900,
                         MeasurementUnit = MeasurementUnitEnum.Piece,
@@ -128,14 +132,14 @@ namespace FreeKassa
                 {
                     PaymentType = PaymentTypeEnum.electronically,
                     Sum = 2900
+                },
+                new ClientInfo()
+                {
+                    EmailOrPhone = "+79991891088"
                 }
-                // new ClientInfo()
-                // {
-                //     EmailOrPhone = "+79991891088"
-                // }
             );
             
-            Console.ReadKey();
+            Console.ReadLine();
             
             k.RegisterReceipt( new ReceiptModel()
                 {
@@ -159,37 +163,45 @@ namespace FreeKassa
                 {
                     PaymentType = PaymentTypeEnum.cash,
                     Sum = 50
-                }
-            );
-            
-            Console.ReadKey();
-            
-            k.RegisterReceipt( new ReceiptModel()
-                {
-                    isElectron = false,
-                    TaxationType = TaxationTypeEnum.Osn,
-                    TypeReceipt = TypeReceipt.Sell
-                }, 
-                new List<BasketModel>() 
-                { 
-                    new BasketModel() 
-                    {
-                        Cost = 10,
-                        MeasurementUnit = MeasurementUnitEnum.Piece,
-                        Name = "Фотографии",
-                        PaymentObject = PaymentObjectEnum.Service,
-                        Quantity = 5,
-                        TaxType = TaxTypeEnum.Vat10
-                    }
                 },
-                new PayModel()
+                new ClientInfo()
                 {
-                    PaymentType = PaymentTypeEnum.cash,
-                    Sum = 50
+                    EmailOrPhone = "+79991891088"
                 }
             );
             
-            Console.ReadKey();
+            Console.ReadLine();
+            
+            // k.RegisterReceipt( new ReceiptModel()
+            //     {
+            //         isElectron = false,
+            //         TaxationType = TaxationTypeEnum.Osn,
+            //         TypeReceipt = TypeReceipt.Sell
+            //     }, 
+            //     new List<BasketModel>() 
+            //     { 
+            //         new BasketModel() 
+            //         {
+            //             Cost = 10,
+            //             MeasurementUnit = MeasurementUnitEnum.Piece,
+            //             Name = "Фотографии",
+            //             PaymentObject = PaymentObjectEnum.Service,
+            //             Quantity = 5,
+            //             TaxType = TaxTypeEnum.Vat10
+            //         }
+            //     },
+            //     new PayModel()
+            //     {
+            //         PaymentType = PaymentTypeEnum.cash,
+            //         Sum = 50
+            //     },
+            //     new ClientInfo()
+            //     {
+            //         EmailOrPhone = "+79991891088"
+            //     }
+            // );
+            
+            Console.ReadLine();
         }
         
         private static List<TicketModel> GetTicket()

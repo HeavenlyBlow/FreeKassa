@@ -877,7 +877,6 @@ namespace FreeKassa.KKT
         }
         public void OpenReceipt(ReceiptModel receiptType, ClientInfo clientInfo = null)
         {
-            _interface.CloseReceipt();
             var status = _interface.GetShiftStatus();
             if (status != 1)
             {
