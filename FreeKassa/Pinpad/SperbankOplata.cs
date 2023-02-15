@@ -78,7 +78,11 @@ namespace FreeKassa
 
                         if (codeResult.Trim() == "2000")
                         {
-                            if(RestartShift()) MakePayment(amount);
+                            if (RestartShift())
+                            {
+                                MakePayment(amount);
+                                return;
+                            }
                         }
                         Error?.Invoke();
                     }

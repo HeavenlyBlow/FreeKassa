@@ -433,8 +433,8 @@ namespace AtolDriver
         private static string GetTaxType(TaxationTypeEnum taxationTypeEnum) => taxationTypeEnum switch
         {
             TaxationTypeEnum.Osn => "osn",
-            TaxationTypeEnum.TtEsn => "ttEsn",
-            TaxationTypeEnum.TtPatent => "ttPatent",
+            TaxationTypeEnum.TtEsn => "esn",
+            TaxationTypeEnum.TtPatent => "patent",
             TaxationTypeEnum.UsnIncome => "usnIncome",
             TaxationTypeEnum.UsnIncomeOutcome => "usnIncomeOutcome",
             _ => ""

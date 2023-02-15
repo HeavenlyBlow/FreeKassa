@@ -20,8 +20,8 @@ namespace FreeKassa
 
         public static void Main(string[] args)
         {
-            var str = File.ReadAllText("test2.json");
-            var jobj = DeserializeHelper.Deserialize(str, model: new CountdownStatusInfo());
+            //var str = File.ReadAllText("test2.json");
+            //var jobj = DeserializeHelper.Deserialize(str, model: new CountdownStatusInfo());
             
             
             
@@ -113,7 +113,7 @@ namespace FreeKassa
             k.RegisterReceipt(new ReceiptModel()
                 {
                     isElectron = false,
-                    TaxationType = TaxationTypeEnum.Osn,
+                    TaxationType = TaxationTypeEnum.TtPatent,
                     TypeReceipt = TypeReceipt.Sell
                 },
                 new List<BasketModel>()
@@ -132,11 +132,11 @@ namespace FreeKassa
                 {
                     PaymentType = PaymentTypeEnum.electronically,
                     Sum = 2900
-                },
-                new ClientInfo()
-                {
-                    EmailOrPhone = "+79991891088"
                 }
+                // new ClientInfo()
+                // {
+                //     EmailOrPhone = "+79991891088"
+                // }
             );
             
             Console.ReadLine();
@@ -163,11 +163,11 @@ namespace FreeKassa
                 {
                     PaymentType = PaymentTypeEnum.cash,
                     Sum = 50
-                },
-                new ClientInfo()
-                {
-                    EmailOrPhone = "+79991891088"
                 }
+                // new ClientInfo()
+                // {
+                //     EmailOrPhone = "+79991891088"
+                // }
             );
             
             Console.ReadLine();
