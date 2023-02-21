@@ -3,6 +3,12 @@
 namespace AtolDriver.models
 {
 
+    public class Shifts
+    {
+        [JsonProperty("shiftTotals")]
+        public ShiftTotals ShiftTotals { get; set; }
+    }
+    
     public class ShiftTotals
     {
         [JsonProperty("cashDrawer")] 

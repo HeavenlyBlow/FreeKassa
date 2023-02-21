@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using WebSocketSharp;
 using System.Text;
 using System.Threading.Tasks;
 using CashCode.Net;
@@ -12,133 +14,80 @@ namespace FreeKassa
 {
     public class CashValidator
     {
-        public int Sum = 0;
-        private int RequiredAmount = 0;
-        private SimpleLogger _logger;
-        public bool isConnected;
         
-        //TODO это для теста
-        // public int Sum = 10;
-
-        private CashCodeBillValidator c;
-        // public event EventHandler NewCashEvent;
-
-        public delegate void CashAccepted(int sum);
-        public delegate void EndWork();
-        public event CashAccepted Accepted;
-        public event EndWork End;
+        // private string _totalCost;
+        // private int _contributed;
+        // private bool _opacity;
+        // WebSocket ws = new WebSocket("ws://127.0.0.1:51654/Validator");
+        //
+        // public void StartWork(int pay)
+        // {
+        //     StartSocket(pay);
+        //     //App.CurrentApp.Wssv.WebSocketServices["/Validator"].Sessions.IDs.ToList().ForEach(f => App.CurrentApp.Wssv.WebSocketServices["/Validator"].Sessions.SendTo("Start|" + pay, f));
+        //
+        // }
+        //
+        // private async void StartSocket(int amount)
+        // {
+        //     Process.Start("BillValidatorWebSoket.exe");
+        //     while (!ws.IsAlive)
+        //     {
+        //         ws.Connect();
+        //         await Task.Delay(500);
+        //     }
+        //     ws.OnMessage += WsOnOnMessage;
+        //     ws.Send("Start|"+ amount);
+        //
+        // }
+        //
+        // private void WsOnOnMessage(object sender, MessageEventArgs e)
+        // {
+        //     try
+        //     {
+        //         switch (e.Data.ToString())
+        //         {
+        //             case string a when a.Contains("Accepted"):
+        //                 int add = int.Parse(a.Split('|').LastOrDefault() ?? string.Empty);
+        //                 if (add > 0)
+        //                 {
+        //                     // App.CurrentApp.Dispatcher.Invoke(() => ((StartCashPayViewModel)((App.CurrentApp.MainWindow as MainWindow)?.TopFrame.Content as StartCashPayPage)?.DataContext).Сontributed += add);
+        //                     // Купюра принята
+        //                 }
+        //                 else
+        //                 {
+        //                     // Некорректное значение куплюры
+        //                     
+        //                     // App.CurrentApp.Logger.Fatal("Некорректное значение купюры:" + a);
+        //                     // App.CurrentApp.TopFrame.Navigate(new SomethingWentWrongPage());
+        //                 }
+        //                 break;
+        //             case "End":
+        //                 // Конец работы
+        //                 
+        //                 // App.CurrentApp.Dispatcher.Invoke(() => (((StartCashPayViewModel)((App.CurrentApp.MainWindow as MainWindow)?.TopFrame.Content as StartCashPayPage)?.DataContext)!).Opacity = false);
+        //                 //App.CurrentApp.Dispatcher.Invoke((() => App.CurrentApp.Wssv.Stop()));
+        //                 ws.Close();
+        //                 break;
+        //             case "Нет соединения с купюроприёмником":
+        //                 if(ws.IsAlive)
+        //                     ws.Send("Stop");
+        //                 // App.CurrentApp.Logger.Error("Нет соединения с купюроприёмником");
+        //                 // App.CurrentApp.TopFrame.Navigate(new SomethingWentWrongPage());
+        //                 break;
+        //             default:
+        //                 //App.CurrentApp.Wssv.WebSocketServices["/Validator"].Sessions.IDs.ToList().ForEach(f => App.CurrentApp.Wssv.WebSocketServices["/Validator"].Sessions.SendTo("error|Неизвестная ошибка", f));
+        //                 // App.CurrentApp.TopFrame.Navigate(new SomethingWentWrongPage());
+        //                 break;
+        //         }
+        //     }
+        //     catch (Exception exception)
+        //     {
+        //         if(ws.IsAlive)
+        //             ws.Send("Stop");
+        //         //App.CurrentApp.Wssv.WebSocketServices["/Validator"].Sessions.IDs.ToList().ForEach(f => App.CurrentApp.Wssv.WebSocketServices["/Validator"].Sessions.SendTo("error|Неизвестная ошибка", f));
+        //         // App.CurrentApp.TopFrame.Navigate(new SomethingWentWrongPage());
+        //     }
+        // }
         
-
-        public CashValidator(CashValidatorModel settings , SimpleLogger logger)
-        {
-            _logger = logger;
-            c = new CashCodeBillValidator(settings.SerialPort, settings.BaundRate);
-        }
-
-        public void StartWork(int sum)
-        {
-            RequiredAmount = sum;
-            _logger.Info("Запущен кешкодер");
-            try
-            {
-                c.BillReceived += new BillReceivedHandler(c_BillReceived);
-                // c.BillStacking += new BillStackingHandler(c_BillStacking);
-                c.BillCassetteStatusEvent += new BillCassetteHandler(c_BillCassetteStatusEvent);
-                c.BillException += new BillExceptionHandler(c_BillException);
-                c.ConnectBillValidator();
-                isConnected = c.IsConnected;
-
-                if (isConnected)
-                {
-                    c.PowerUpBillValidator();
-                    c.StartListening();
-                    c.EnableBillValidator();
-                    Console.ReadKey();
-                    c.AcceptBill();
-                    c.DisableBillValidator();
-                    Console.ReadKey();
-                    c.EnableBillValidator();
-                    Console.ReadKey();
-                    c.RejectBill();
-                    c.StopListening();
-                }
-                else
-                {
-                    _logger.Fatal("Кушекодер не подключен");
-                    // throw new ValidatorConnectionExceptions("Отсутсвует подключение к купюроприемнику");
-                }
-
-                //c.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-        }
-
-        void c_BillCassetteStatusEvent(object Sender, BillCassetteEventArgs e)
-        {
-            Console.WriteLine(e.Status.ToString());
-        }
-
-        void c_BillStacking(object Sender, BillStackedEventArgs e)
-        {
-            // Console.WriteLine("Купюра в стеке");
-            _logger.Info("Купюра в стеке");
-
-            e.Hold = true;
-            
-            //if (Sum > 100)
-            //{ 
-            //    e.Cancel = true;
-            //    Console.WriteLine("Превышен лимит единовременной оплаты");
-            //}
-        }
-
-        void c_BillReceived(object Sender, BillReceivedEventArgs e)
-        {
-            if (e.Status == BillRecievedStatus.Rejected)
-            {
-                _logger.Info("Купюра не принята");
-                Console.WriteLine(e.RejectedReason);
-            }
-            else if (e.Status == BillRecievedStatus.Accepted)
-            {
-                Sum += e.Value;
-                _logger.Info($"Купюра: {e.Value} принята");
-                //MessageBox.Show("Сумма " + Sum);
-                Accepted!.Invoke(Sum);
-
-                if (RequiredAmount >= Sum)
-                {
-                    StopWork();
-                }
-                
-                // NewCashEvent.Invoke(null, null);
-                //Console.WriteLine("Bill accepted! " + e.Value + " руб. Общая сумму: " + Sum.ToString());
-            }
-        }
-
-        //public  void StopWork()
-        //{
-        //    c.StopListening();
-        //    c.DisableBillValidator();
-        //    Sum = 0;
-        //}
-
-        void c_BillException(object Sender, BillExceptionEventArgs e)
-        {
-            Console.WriteLine(e.Message);
-            c.Dispose();
-        }
-
-        public void StopWork()
-        {
-            c.DisableBillValidator();
-            Sum = 0;
-            c.Dispose();
-            _logger.Info("Кешкодер отключен");
-            End!.Invoke();
-        }
     }
 }

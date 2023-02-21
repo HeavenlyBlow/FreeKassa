@@ -272,7 +272,7 @@ namespace AtolDriver
             return (int)fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE);
         }
 
-        public FnStatus? GetFnStatus()
+        public FnStatistic? GetFnStatus()
         {
             SendJson(new Request()
             {
@@ -280,12 +280,12 @@ namespace AtolDriver
             }, out var answer);
 
             if (answer.Code == -1) return null;
-            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new FnStatus());
+            var jobj = JsonConvert.DeserializeObject<FnStatistic>(answer.Json);
             if (jobj == null) return null;
-            return (FnStatus)jobj;
+            return (FnStatistic)jobj;
         }
         
-        public ShiftTotals? GetShiftsTotal()
+        public Shifts? GetShiftsTotal()
         {
             SendJson(new Request()
             {
@@ -293,9 +293,9 @@ namespace AtolDriver
             }, out var answer);
 
             if (answer.Code == -1) return null;
-            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new ShiftTotals());
+            var jobj = JsonConvert.DeserializeObject<Shifts>(answer.Json);
             if (jobj == null) return null;
-            return (ShiftTotals)jobj;
+            return (Shifts)jobj;
         }
         
         /// <summary>

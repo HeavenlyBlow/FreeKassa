@@ -72,15 +72,8 @@ namespace FreeKassa.KKT
         {
            var company = _interface.GetCompanyInfo();
            var reportOfdExchangeStatus = _interface.CountdownStatus();
-           var fnStatus = _interface.GetFnStatus();
+           var FnStatistic = _interface.GetFnStatus();
            var fnTotal = _interface.GetShiftsTotal();
-           
-
-           if (reportOfdExchangeStatus == null || company == null || fnStatus == null || fnTotal == null)
-           {
-               _logger.Fatal("Отсутвуют небходимые данные для печати чека закрытия смены");
-               throw new CheckoutException("Отсутвуют небходимые данные для печати чека закрытия смены");
-           }
            
            var errors = reportOfdExchangeStatus.Errors;
            var ofd = reportOfdExchangeStatus.Status;
@@ -96,7 +89,8 @@ namespace FreeKassa.KKT
                fqQuantityCounters.sellReturn,
            };
 
-           var fnReceipts = fnTotal.Receipts;
+           var fnReceipts = fnTotal.ShiftTotals.Receipts;
+           
 
            return new CloseShiftsFormModel()
            {
@@ -104,14 +98,14 @@ namespace FreeKassa.KKT
                Address = company.Address,
                CashierName = _kktModel.OperatorName,
                
-               TotalChequeShiftResult = fnTotal.Income.Count.ToString(),
-               QuantityChequeShiftResult = fnTotal.Income.Count.ToString(),
-               AmountParishTotalShiftResult = fnReceipts.Buy.Sum.ToString(),
-               AmountParishCashShiftResult = fnReceipts.Buy.Payments.Cash.ToString(),
-               AmountParishCashlessShiftResult = fnReceipts.Buy.Payments.Electronically.ToString(),
-               AmountAdvancePaymentsShiftResult = fnReceipts.Buy.Payments.Prepaid.ToString(),
-               AmountCreditsShiftResult = fnReceipts.Buy.Payments.Credit.ToString(),
-               AmountOtherFormPaymentShiftResult = fnReceipts.Buy.Payments.Other.ToString(),
+               TotalChequeShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Count.ToString(),
+               QuantityChequeShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Count.ToString(),
+               AmountParishTotalShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Sum.ToString(),
+               AmountParishCashShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Cash.ToString(),
+               AmountParishCashlessShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Electronically.ToString(),
+               AmountAdvancePaymentsShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Prepaid.ToString(),
+               AmountCreditsShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Credit.ToString(),
+               AmountOtherFormPaymentShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Other.ToString(),
                AmountVat20ShiftResult = fnReceipts.Buy.Payments.UserPaymentType1.ToString(),
                AmountVat10ShiftResult = fnReceipts.Buy.Payments.UserPaymentType2.ToString(),
                AmountVat20120ShiftResult = fnReceipts.Buy.Payments.UserPaymentType3.ToString(),
@@ -136,17 +130,17 @@ namespace FreeKassa.KKT
                TurnoverVat0FnResult = fn.buy.vat0Sum.ToString(),
                TurnoverNoVatFnResult = fn.buy.vatNoSum.ToString(),
                
-               DateTime = fisqalParams.fiscalDocumentDateTime.ToString(),
-               ShiftNumber = fisqalParams.shiftNumber.ToString(),
+               DateTime = info.FiscalParams.fiscalDocumentDateTime.ToString(),
+               ShiftNumber = info.FiscalParams.shiftNumber.ToString(),
                RegisterNumberKKT = fisqalParams.registrationNumber,
                Inn = company.Vatin,
-               FiscalStorageRegisterNumber = info.fnNumber,
-               FiscalDocumentNumber = info.fiscalDocumentNumber.ToString(),
-               FiscalFeatureDocument = info.fiscalDocumentSign,
+               FiscalStorageRegisterNumber = info.FiscalParams.fnNumber,
+               FiscalDocumentNumber = info.FiscalParams.fiscalDocumentNumber.ToString(),
+               FiscalFeatureDocument = info.FiscalParams.fiscalDocumentSign,
                DontConnectOfD = errors.ofd.description,
-               NotTransmittedFD = ofd.notSentCount.ToString(),
+               NotTransmittedFD = FnStatistic.FnStatus.Warnings.OfdTimeout.ToString(),
                NotTransmittedFrom = errors.lastSuccessConnectionDateTime.ToString(),
-               KeyResource = fnStatus.warnings.resourceExhausted.ToString(),
+               KeyResource = FnStatistic.FnStatus.Warnings.ResourceExhausted.ToString(),
            };
            
            

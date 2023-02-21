@@ -18,6 +18,7 @@ public static class DeserializeHelper
             CloseShiftsInfo => str.ToObject<CloseShiftsInfo>(),
             ChequeInfo => str.ToObject<ChequeInfo>(),
             OpenShiftInfo => str.ToObject<OpenShiftInfo>(),
+            ShiftTotals => str.ToObject<ShiftTotals>(),
             _ => null
         };
     }

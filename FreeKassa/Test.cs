@@ -171,7 +171,7 @@ namespace FreeKassa
             );
             
             Console.ReadLine();
-            
+
             // k.RegisterReceipt( new ReceiptModel()
             //     {
             //         isElectron = false,

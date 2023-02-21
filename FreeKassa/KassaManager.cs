@@ -52,7 +52,7 @@ namespace FreeKassa
                 _simpleLogger.Fatal("SettingsExceptions: Не удалось получить настройки кассы");
                 throw new SettingsExceptions("Не удалось получить настройки кассы");
             }
-            _validator = new CashValidator(settings.CashValidator, _simpleLogger);
+            // _validator = new CashValidator(settings.CashValidator, _simpleLogger);
             if (settings.KKT.PrinterManagement == 0)
             {
                 _vkp80Ii = new EPSON();
