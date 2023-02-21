@@ -33,13 +33,14 @@ namespace FreeKassa
 
         public delegate void Payments();
 
-        public delegate void Receipt(ChequeFormModel cheque);
+        public delegate ChequeFormModel Receipt(ChequeFormModel cheque);
 
 
         #region Event
 
         // public event EventHandler SuccessfullyReceipt;
         public event Receipt Successfully;
+        public event Receipt Error;
         public event Payments SuccessfullyPayment;
         public event Payments ErrorPayment;
 

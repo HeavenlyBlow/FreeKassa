@@ -24,10 +24,11 @@ namespace FreeKassa.KKT
         private bool _manualShiftManagement;
         private readonly PrinterManager _printerManager;
         private readonly SimpleLogger _logger;
-        // public Interface Interface
-        // {
-        //     get => _interface;
-        // }
+
+        // public delegate string Errors(string message);
+        //
+        // public event Errors Error;
+        
         public KKTManager(bool manualShiftManagement, PrinterManager printerManager, 
             Model.KKT kktSettings, SimpleLogger logger)
         {
@@ -36,6 +37,7 @@ namespace FreeKassa.KKT
             _printerManager = printerManager;
             if (!ValidationKktSettings.Check(kktSettings))
             {
+                
                 _logger.Fatal("SettingsExceptions: Отсутсвует имя кассира или включены обра режима смеен");
                 throw new SettingsExceptions("Отсутсвует имя кассира или включены обра режима смеен");
             }
