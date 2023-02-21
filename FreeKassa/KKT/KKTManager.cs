@@ -904,7 +904,7 @@ namespace FreeKassa.KKT
             _interface.Pay(pay.PaymentType, pay.Sum);
         }
         public void CloseReceipt(PayModel pay, List<BasketModel> basketModels,
-            ReceiptModel receiptModel, ClientInfo clientInfo = null)
+            ReceiptModel receiptModel, out ChequeFormModel data)
         {
             var chequeInfo = _interface.CloseReceipt();
             
@@ -915,7 +915,7 @@ namespace FreeKassa.KKT
                 throw new ChequeException(_interface.ReadError());
             }
             
-            var data = DataAboutChequeReceipt(pay, basketModels, receiptModel, chequeInfo);
+            data = DataAboutChequeReceipt(pay, basketModels, receiptModel, chequeInfo);
             
             if (data == null)
             {
@@ -923,7 +923,7 @@ namespace FreeKassa.KKT
                 throw new ChequeException("Не хватает данных для печати");
             }
             
-            if(_printerManager != null) _printerManager.Print(data);
+            if(_printerManager != null && !receiptModel.isElectron) _printerManager.Print(data);
         }
         //TODO Может быть ошибка из-за того что выполняется другая операция с ккт!
         private void StartTimer()

@@ -33,10 +33,13 @@ namespace FreeKassa
 
         public delegate void Payments();
 
+        public delegate void Receipt(ChequeFormModel cheque);
+
 
         #region Event
 
-        public event EventHandler SuccessfullyReceipt;
+        // public event EventHandler SuccessfullyReceipt;
+        public event Receipt Successfully;
         public event Payments SuccessfullyPayment;
         public event Payments ErrorPayment;
 
@@ -100,9 +103,10 @@ namespace FreeKassa
                 }
                 
                 _kktManager.AddPay(pay);
-                _kktManager.CloseReceipt(pay, basket, receiptType);
+                _kktManager.CloseReceipt(pay, basket, receiptType, out var data);
                 
-                SuccessfullyReceipt?.Invoke(null, null!);
+                // SuccessfullyReceipt?.Invoke(null, null!);
+                Successfully?.Invoke(data);
             }));
             
         }
@@ -119,6 +123,17 @@ namespace FreeKassa
             
 
             return true;
+        }
+
+        public void PrintCheque(ChequeFormModel chequeFormModel)
+        {
+            if (_printerManager == null)
+            {
+                if (_vkp80Ii == null) _vkp80Ii = new EPSON();
+                _printerManager = new PrinterManager(_vkp80Ii, ConfigHelper.GetSettings().Printer);
+            }
+            
+            _printerManager.Print(chequeFormModel);
         }
         /// <summary>
         /// Запуск процесса оплаты

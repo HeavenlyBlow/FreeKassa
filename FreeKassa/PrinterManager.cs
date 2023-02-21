@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
+using FreeKassa.FormForPrinting;
 using FreeKassa.FormForPrinting.FiscalDocuments;
 using FreeKassa.FormForPrinting.UsersDocument;
 using FreeKassa.Model;
@@ -48,11 +49,9 @@ namespace FreeKassa
                     SendToPrint(CloseShiftsForm.GetCloseShiftsForm(_vkp80ii, closeShiftsFormModel));
                     break;
                 case ChequeFormModel chequeFormModel:
+                    // SendToPrint(new ChequeForm().GetByteForm(chequeFormModel));
                     SendToPrint(ChequeForm.GetChequeForm(_vkp80ii, chequeFormModel));
                     break;
-                // case TicketModel model:
-                //     SendToPrint(TiсketForm.GetTicketForm(_vkp80ii,model));
-                //     break;
             }
         }
         

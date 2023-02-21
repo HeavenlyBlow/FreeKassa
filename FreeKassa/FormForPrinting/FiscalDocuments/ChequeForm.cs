@@ -13,6 +13,9 @@ namespace FreeKassa.FormForPrinting.FiscalDocuments
         //TODO нужно разобраться с налогами и как их выводить
         public static byte[] GetChequeForm(EPSON vkp80ii ,ChequeFormModel chequeFormModel)
         {
+            // var vkp80ii = new EPSON();
+            // ChequeFormModel chequeFormModel
+            // var chequeFormModel = (ChequeFormModel)model;
             var data = ByteSplicer.Combine(
                 vkp80ii.CenterAlign(),
                 vkp80ii.SetStyles(PrintStyle.FontB),
@@ -73,5 +76,7 @@ namespace FreeKassa.FormForPrinting.FiscalDocuments
                     $"={product.Cost * product.Quantity}", IdentHelper.Style.FontB)),
                 vkp80ii.PrintLine(IdentHelper.ArrangeWords(product.TaxTypeString,
                     $"={product.QuantityVat.ToString(CultureInfo.InvariantCulture)}", IdentHelper.Style.FontB)));}
-        }
+
+        
+    }
 }

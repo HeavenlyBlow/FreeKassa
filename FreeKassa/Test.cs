@@ -105,10 +105,10 @@ namespace FreeKassa
             // });
 
 
-            k.SuccessfullyReceipt += (sender, eventArgs) =>
-            {
-                Console.WriteLine("Регистрация успешна");
-            };
+            // k.SuccessfullyReceipt += (sender, eventArgs) =>
+            // {
+            //     Console.WriteLine("Регистрация успешна");
+            // };
 
             k.RegisterReceipt(new ReceiptModel()
                 {
