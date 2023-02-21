@@ -6,6 +6,7 @@ using AtolDriver;
 using AtolDriver.models;
 using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
+using FreeKassa.Enum;
 using FreeKassa.Extensions.KassaManagerExceptions;
 using FreeKassa.Extensions.KKTExceptions;
 using FreeKassa.FormForPrinting.UsersDocument;
@@ -23,14 +24,24 @@ namespace FreeKassa
         private KKTManager _kktManager;
         private PrinterManager _printerManager;
         private CashValidator _validator;
-        private bool _payment;
-        private double _paymentCost;
+        private PaymentBase _paymentBase;
         //TODO задел на то что надо будет самому управлять сменой
         private bool _manualShiftManagement = false;
         private EPSON _vkp80Ii;
         private int _onKktPrinterManagement;
         private readonly SimpleLogger _simpleLogger;
+
+        public delegate void Payments();
+
+
+        #region Event
+
         public event EventHandler SuccessfullyReceipt;
+        public event Payments SuccessfullyPayment;
+        public event Payments ErrorPayment;
+
+        #endregion
+
 
 
         public KassaManager()
@@ -109,54 +120,53 @@ namespace FreeKassa
 
             return true;
         }
+        /// <summary>
+        /// Запуск процесса оплаты
+        /// </summary>
+        /// <param name="pinpad">Выбор необходимого оборудования для оплаты</param>
+        /// <param name="sum">Сумма для оплаты</param>
+        public void StartPayment(PinpadEnum pinpad, long sum)
+        {
+            switch (pinpad)
+            {
+                case PinpadEnum.Sberbank:
 
-        // private bool ContinueReceipt()
-        // {
-        //     _kktManager.AddPay(pay);
-        //     _kktManager.CloseReceipt(pay, basket, receiptType);
-        //     if (!printReceipt) return true;
-        //     return true;
-        //     
-        // }
+                    var sber = new SperbankOplata(_simpleLogger);
+                    _paymentBase = sber;
+                    sber.Successfully += PaymentOnSuccessfully;
+                    sber.Error += PaymentOnError;
+                    sber.StartPayment(sum);
+                    break;
+
+                default:
+                    _simpleLogger.Info("Не верно задан тип оплаты");
+                    break;
+            }
+        }
+
+        private void PaymentOnError()
+        {
+            Unsubscribe();
+            ErrorPayment?.Invoke();
+        }
+
+        private void PaymentOnSuccessfully()
+        {
+            Unsubscribe();
+            SuccessfullyPayment?.Invoke();
+        }
+
+        private void Unsubscribe()
+        {
+            _paymentBase.Successfully -= PaymentOnSuccessfully;
+            _paymentBase.Error -= PaymentOnError;
+        }
         
-        // public static async Task<bool> AcceptPayment(PayModel payModel)
-        // {
-        //     payModel.PaymentType switch
-        //     {
-        //         PaymentTypeEnum.cash => StartValidator(payModel.Sum),
-        //         PaymentTypeEnum.electronically => PaymentElectronically(payModel.Sum),
-        //         _ => throw new ArgumentOutOfRangeException("Тип платежа не обрабатывается")
-        //     };
-        //     while (_payment == false)
-        //     {
-        //         Console.WriteLine("В цикле");
-        //     }
-        //     return true;
-        // }
-
-        // private bool StartValidator(double sum)
-        // {
-        //     _paymentCost = sum;
-        //     _validator.NewCashEvent += ValidatorOnNewCashEvent;
-        //     _validator.StartWork();
-        //     return false;
-        // }
-        //
-        // private void ValidatorOnNewCashEvent(object sender, EventArgs e)
-        // {
-        //     if (!(_validator.Sum >= _paymentCost)) return;
-        //     _payment = true;
-        //     _validator.StopWork();
-        // }
-        //
-        //
-        // private bool PaymentElectronically(double sum)
-        // {
-        //     return true;
-        // }
         public void Dispose()
         {
             _kktManager?.Dispose();
+            if(_paymentBase != null) 
+                Unsubscribe();
         }
     }
 }

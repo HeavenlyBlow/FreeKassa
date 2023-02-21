@@ -12,14 +12,14 @@ using FreeKassa.Utils;
 
 namespace FreeKassa
 {
-   public class SperbankOplata
+   public class SperbankOplata: PaymentBase
    {
        
        
-        public delegate void Payment();
+        public new delegate void Payment();
 
-        public event Payment Successfully;
-        public event Payment Error;
+        public new event Payment Successfully;
+        public new event Payment Error;
        
         // For Windows Mobile, replace user32.dll with coredll.dll
         [DllImport("user32.dll", SetLastError = true)]
