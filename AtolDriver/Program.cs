@@ -12,7 +12,7 @@ namespace AtolDriver
             string operatorName = "Xobnail";
             string operatorInn = null;
 
-            var printer = new Interface(port, baudRate);
+            var printer = new AtolInterface(port, baudRate);
             printer.OpenConnection();
             printer.GetShiftStatus();
             var num = printer.GetLastDocumentNumber();

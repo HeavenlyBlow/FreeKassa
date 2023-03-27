@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
+using AtolDriver.Interface;
 using Newtonsoft.Json;
 
-namespace AtolDriver.models
+namespace AtolDriver.Models
 {
-    public class Receipt
+    public class Receipt : IReceipt
     {
         [JsonProperty("type")]
         public string Type{ get; set; }

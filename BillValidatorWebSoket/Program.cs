@@ -4,6 +4,9 @@ using System.Linq;
 using System.Net;
 using CashCode.Net;
 using Newtonsoft.Json;
+using WebSocketSharp;
+using WebSocketSharp.Server;
+
 namespace BillValidatorWebSoket
 {
     internal class Program
@@ -80,8 +83,7 @@ namespace BillValidatorWebSoket
                 else
                 {
                     _logger.Fatal("Кэшекодер не подключен");
-                    ws.WebSocketServices["/Validator"].Sessions.IDs.ToList().ForEach(f=> ws.WebSocketServices["/Validator"].Sessions.SendTo("Нет соединения с купюроприёмником", f)); 
-                    // throw new ValidatorConnectionExceptions("Отсутсвует подключение к купюроприемнику");
+                    ws.WebSocketServices["/Validator"].Sessions.IDs.ToList().ForEach(f=> ws.WebSocketServices["/Validator"].Sessions.SendTo("Нет соединения с купюроприёмником", f));
                 }
 
                 //c.Dispose();
@@ -111,7 +113,6 @@ namespace BillValidatorWebSoket
             {
                 Sum += e.Value;
                 _logger.Info($"Купюра: {e.Value} принята");
-                //MessageBox.Show("Сумма " + Sum);
                 try
                 {
                     ws.WebSocketServices["/Validator"].Sessions.IDs.ToList().ForEach(f => ws.WebSocketServices["/Validator"].Sessions.SendTo("Accepted|" + e.Value, f));
@@ -127,13 +128,9 @@ namespace BillValidatorWebSoket
                 {
                     Console.WriteLine("Вся сумма внесена");
                     ws.WebSocketServices["/Validator"].Sessions.IDs.ToList().ForEach(f => ws.WebSocketServices["/Validator"].Sessions.SendTo("End", f));
-
-                    //ws.Send("End");
+                    
                     StopWork();
                 }
-
-                // NewCashEvent.Invoke(null, null);
-                //Console.WriteLine("Bill accepted! " + e.Value + " руб. Общая сумму: " + Sum.ToString());
             }
         }
 
@@ -155,7 +152,6 @@ namespace BillValidatorWebSoket
             {
                 try
                 {
-                    //c.StopListening();
                     c.DisableBillValidator();
                     c.BillReceived -= new BillReceivedHandler(c_BillReceived);
                     c.BillCassetteStatusEvent -= new BillCassetteHandler(c_BillCassetteStatusEvent);
@@ -193,7 +189,7 @@ namespace BillValidatorWebSoket
                 }
                 catch (Exception exception)
                 {
-
+                    _logger.Fatal($"Ошибка в методе OnMessage : {exception.Message}");
                 }
             }
         }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using AtolDriver;
-using AtolDriver.models;
+using AtolDriver.Models;
 using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
 using FreeKassa.Enum;
@@ -20,6 +20,9 @@ namespace FreeKassa
 {
     public class KassaManager : IDisposable
     {
+
+        #region Header
+
         private object _locker = new object();
         private KKTManager _kktManager;
         private PrinterManager _printerManager;
@@ -30,12 +33,27 @@ namespace FreeKassa
         private EPSON _vkp80Ii;
         private int _onKktPrinterManagement;
         private readonly SimpleLogger _simpleLogger;
-
+        private SettingsModel _settings;
         public delegate void Payments();
+        public delegate void Receipt(ChequeFormModel cheque);
+        
+        public KassaManager()
+        {
+            _simpleLogger = new SimpleLogger();
+        }
 
-        public delegate ChequeFormModel Receipt(ChequeFormModel cheque);
+        #endregion
 
+        #region Property
 
+        
+        public CashValidator CashValidator
+        {
+            get => _validator;
+        }
+        
+        #endregion
+        
         #region Event
 
         // public event EventHandler SuccessfullyReceipt;
@@ -46,43 +64,38 @@ namespace FreeKassa
 
         #endregion
 
+        #region Processing
 
+        #region Base
 
-        public KassaManager()
-        {
-            _simpleLogger = new SimpleLogger();
-        }
-
-        public CashValidator CashValidator
-        {
-            get => _validator;
-        }
-        
         public bool StartKassa()
         {
             _simpleLogger.Info("Касса запускается");
-            var settings = ConfigHelper.GetSettings();
-            if (settings == null)
+            _settings = ConfigHelper.GetSettings();
+            if (_settings == null)
             {
                 _simpleLogger.Fatal("SettingsExceptions: Не удалось получить настройки кассы");
                 throw new SettingsExceptions("Не удалось получить настройки кассы");
             }
-            // _validator = new CashValidator(settings.CashValidator, _simpleLogger);
-            if (settings.KKT.PrinterManagement == 0)
+            
+            if (_settings.KKT.PrinterManagement == 0)
             {
                 _vkp80Ii = new EPSON();
-                _printerManager = new PrinterManager(_vkp80Ii, settings.Printer);
-                _kktManager = new KKTManager(_manualShiftManagement, _printerManager, settings.KKT, _simpleLogger);
+                _printerManager = new PrinterManager(_vkp80Ii, _settings.Printer);
+                _kktManager = new KKTManager(_manualShiftManagement, _printerManager, _settings.KKT, _simpleLogger);
             }
             else
             {
-                _kktManager = new KKTManager(settings.KKT, _simpleLogger);
+                _kktManager = new KKTManager(_settings.KKT, _simpleLogger);
             }
             _simpleLogger.Info("Касса запущена");
             return true;
         }
-        //TODO запускать в другом потоке и инвочить результат
-        
+
+        #endregion
+
+        #region Receipt
+
         /// <summary>
         /// Фискализация чека
         /// </summary>
@@ -112,40 +125,20 @@ namespace FreeKassa
             
         }
 
-        public bool PrintUsersDocument(IEnumerable<TicketModel> tikets)
-        {
-            if (_printerManager == null)
-            {
-                if (_vkp80Ii == null) _vkp80Ii = new EPSON();
-                _printerManager = new PrinterManager(_vkp80Ii, ConfigHelper.GetSettings().Printer);
-            }
-            
-            _printerManager.Print(models: tikets);
-            
+        #endregion
 
-            return true;
-        }
+        #region Payment
 
-        public void PrintCheque(ChequeFormModel chequeFormModel)
-        {
-            if (_printerManager == null)
-            {
-                if (_vkp80Ii == null) _vkp80Ii = new EPSON();
-                _printerManager = new PrinterManager(_vkp80Ii, ConfigHelper.GetSettings().Printer);
-            }
-            
-            _printerManager.Print(chequeFormModel);
-        }
         /// <summary>
         /// Запуск процесса оплаты
         /// </summary>
-        /// <param name="pinpad">Выбор необходимого оборудования для оплаты</param>
+        /// <param name="paymentType">Выбор необходимого оборудования для оплаты</param>
         /// <param name="sum">Сумма для оплаты</param>
-        public void StartPayment(PinpadEnum pinpad, long sum)
+        public void StartPayment(PaymentType paymentType, long sum)
         {
-            switch (pinpad)
+            switch (paymentType)
             {
-                case PinpadEnum.Sberbank:
+                case PaymentType.Sberbank:
 
                     var sber = new SperbankOplata(_simpleLogger);
                     _paymentBase = sber;
@@ -154,8 +147,16 @@ namespace FreeKassa
                     sber.StartPayment(sum);
                     break;
 
+                case PaymentType.CashValidator:
+
+                    var cash = new CashValidator(_simpleLogger);
+                    cash.Successfully += PaymentOnSuccessfully;
+                    cash.Error += PaymentOnError;
+                    cash.StartWork((int)sum);
+                    break;
+                
                 default:
-                    _simpleLogger.Info("Не верно задан тип оплаты");
+                    _simpleLogger.Info("Не верно задано оборудование для оплаты");
                     break;
             }
         }
@@ -177,12 +178,59 @@ namespace FreeKassa
             _paymentBase.Successfully -= PaymentOnSuccessfully;
             _paymentBase.Error -= PaymentOnError;
         }
-        
+
+        #endregion
+
+        #region Printer
+
+        public bool PrinterReady()
+        {
+            if (_settings.KKT.PrinterManagement == 1)
+            {
+                return !_kktManager.CheckPrinterError();
+            }
+
+            return true;
+        }
+        public bool PrintUsersDocument(IEnumerable<TicketModel> tikets)
+        {
+            if (_printerManager == null)
+            {
+                if (_vkp80Ii == null) _vkp80Ii = new EPSON();
+                _printerManager = new PrinterManager(_vkp80Ii, ConfigHelper.GetSettings().Printer);
+            }
+            
+            _printerManager.Print(models: tikets);
+            
+
+            return true;
+        }
+        public void PrintCheque(ChequeFormModel chequeFormModel)
+        {
+            if (_printerManager == null)
+            {
+                if (_vkp80Ii == null) _vkp80Ii = new EPSON();
+                _printerManager = new PrinterManager(_vkp80Ii, ConfigHelper.GetSettings().Printer);
+            }
+            
+            _printerManager.Print(chequeFormModel);
+        }
+
+        #endregion
+
+        #region Interface
+
         public void Dispose()
         {
             _kktManager?.Dispose();
             if(_paymentBase != null) 
                 Unsubscribe();
         }
+
+        #endregion
+
+        #endregion
+        
+        
     }
 }

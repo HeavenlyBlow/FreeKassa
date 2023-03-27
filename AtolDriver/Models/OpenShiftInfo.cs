@@ -1,4 +1,4 @@
-﻿namespace AtolDriver.models;
+﻿namespace AtolDriver.Models;
 
 public class OpenShiftInfo
 {

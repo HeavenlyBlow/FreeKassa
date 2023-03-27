@@ -1,8 +1,6 @@
-﻿using AtolDriver.Interface;
+﻿namespace AtolDriver.Interface;
 
-namespace AtolDriver.Models;
-
-public class ChequeInfo : IFiscalParam
+public interface IFiscalParam
 {
     public DateTime FiscalDocumentDateTime { get; set; }
     public int FiscalDocumentNumber { get; set; }
@@ -12,5 +10,4 @@ public class ChequeInfo : IFiscalParam
     public int ShiftNumber { get; set; }
     public string FnsUrl { get; set; }
     public int Total { get; set; }
-    
 }

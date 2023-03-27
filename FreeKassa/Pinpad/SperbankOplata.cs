@@ -87,7 +87,7 @@ namespace FreeKassa
                         Error?.Invoke();
                     }
                 } 
-                Task.Delay(500);
+                Task.Delay(500).Wait();
             }
             Error?.Invoke();
         }

@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using AtolDriver;
-using AtolDriver.models;
+using AtolDriver.Models;
 using FreeKassa.Extensions.KassaManagerExceptions;
 using FreeKassa.Extensions.KKTExceptions;
 using FreeKassa.Model;
@@ -17,17 +17,17 @@ namespace FreeKassa.KKT
 {
     public class KKTManager : IDisposable
     {
+
+        #region Header
+
         private Model.KKT _kktModel;
-        private Interface _interface;
+        private AtolInterface _atolInterface;
         private Timer _timer;
         private object locker = new();
         private bool _manualShiftManagement;
         private readonly PrinterManager _printerManager;
         private readonly SimpleLogger _logger;
-
-        // public delegate string Errors(string message);
-        //
-        // public event Errors Error;
+        
         
         public KKTManager(bool manualShiftManagement, PrinterManager printerManager, 
             Model.KKT kktSettings, SimpleLogger logger)
@@ -55,27 +55,230 @@ namespace FreeKassa.KKT
             _kktModel = kktSettings;
             StartKKT();
         }
+
+        #endregion
+
+        #region Processing
+
+        #region Base
+
         private void StartKKT()
         {
             //TODO Допсать обработку для печати!
-            _interface = new Interface(_kktModel.SerialPort, _kktModel.BaundRate);
-            if (_interface.OpenConnection() != 0)
+            _atolInterface = new AtolInterface(_kktModel.SerialPort, _kktModel.BaundRate);
+            if (_atolInterface.OpenConnection() != 0)
             {
                 _logger.Fatal("OpenConnectionException: Ошибка подключения к ККТ");
                 throw new OpenConnectionException("Ошибка подключения к ККТ");
             }
-            _interface.SetDateTime();
-            _interface.SetOperator(_kktModel.OperatorName, _kktModel.Inn);
+            _atolInterface.SetDateTime();
+            _atolInterface.SetOperator(_kktModel.OperatorName, _kktModel.Inn);
             ShiftsControl();
             if(_manualShiftManagement) return;
             StartTimer();
         }
+        
+        private void UpdateModel() => _kktModel = ConfigHelper.GetSettings().KKT;
+
+        #endregion
+
+        #region Shifts
+
+        private void ShiftsControl()
+        {
+            lock (locker)
+            {
+                if (_kktModel.Shift.WorkKWithBreaks.On == 1) WorkKWithBreaksShiftsControl();
+                else NonStopWorkShiftsControl();
+            }
+        }
+        private void WorkKWithBreaksShiftsControl()
+        {
+            var date = FileHelper.GetlastOpenShiftsDateTime();
+            if (date == null)
+                
+            {
+                StartShifts();
+                return;
+            }
+            var dateNow = DateTime.Now;
+            UpdateModel();
+            var status = _atolInterface.GetShiftStatus();
+            if (date.Value.Day == dateNow.Day && date.Value.Month == dateNow.Month)
+            {
+                if (dateNow >= _kktModel.Shift.WorkKWithBreaks.OpeningTime && dateNow < _kktModel.Shift.WorkKWithBreaks.CloseTime)
+                {
+                    if (status == 0)
+                    {
+                        StartShifts();
+                        return;
+                    };
+                }
+                else
+                {
+                    if ((status == 1) || (status == 2)) CloseShifts();
+                    return;
+                }
+            }
+            else
+            {
+                StartShifts();
+            }
+        }
+        private void NonStopWorkShiftsControl()
+        {
+            var date = FileHelper.GetlastOpenShiftsDateTime();
+            if (date == null)
+            {
+                _logger.Info("NonStopWorkShiftsControl: Отсутсвует дата последнего запуска смены. Запуск смены");
+                StartShifts();
+                
+                return;
+            }
+            var dateNow = DateTime.Now;
+            UpdateModel();
+            var status = _atolInterface.GetShiftStatus();
+            
+            if (status == 1)
+            {
+                if (dateNow.Day == date.Value.Day) return;
+                
+                if (dateNow >= _kktModel.Shift.NonStopWork.ShiftChangeTime)
+                {
+                    _logger.Info($"NonStopWorkShiftsControl: Перезапуск смены:\n Cтатус смены: {status} \n Поседняя дата: {date} \n Сейчас: {dateNow} \n Дата закрытия: {_kktModel.Shift.NonStopWork.ShiftChangeTime}");
+                    StartShifts();
+                }
+                
+                return;
+            }
+
+            if (status is 2 or 0)
+            {
+                _logger.Info($"NonStopWorkShiftsControl: Запуск смены из-за статуса смены ккт : {status}");
+                StartShifts();
+            }
+        }
+        private bool StartShifts()
+        {
+            var status = _atolInterface.GetShiftStatus();
+            
+            if (status >= 1)
+            {
+                _logger.Info($"StartShifts: Закрытие смены из-за статуса смены ккт : {status}");
+                CloseShifts();
+            }
+            
+            var openShiftsAnswer = _atolInterface.OpenShift();
+            
+            if (openShiftsAnswer == null)
+            {
+                var error = _atolInterface.ReadError();
+                _logger.Fatal($"StartShifts: Открытие смены произошло с ошибкой: {error}");
+                throw new ShiftException(error);
+            }
+            
+            FileHelper.WriteOpenShiftsDateTime();
+            if(_printerManager != null) _printerManager.Print(DataAboutOpeningShift(openShiftsAnswer));
+            
+            return true;
+        }
+        private bool CloseShifts()
+        {
+            var closeShiftsAnswer = _atolInterface.CloseShift();
+            if (closeShiftsAnswer == null)
+            {
+                var error = _atolInterface.ReadError();
+                _logger.Fatal($"CloseShifts: Закрытие смены произошло с ошибкой: {error}");
+                throw new ShiftException(error);
+            }
+            if(_printerManager != null) _printerManager.Print(DataAboutCloseShift(closeShiftsAnswer));
+            
+            return true;
+        }
+        private void StartTimer()
+        {
+            int num = 0; 
+            TimerCallback tm = new TimerCallback(CheckTime); 
+            _timer = new Timer(tm,num, 11000, 50000);
+        }
+        private void CheckTime(object source)
+        {
+            ShiftsControl();
+        }
+
+        #endregion
+
+        #region Receipt
+
+        public void OpenReceipt(ReceiptModel receiptType, ClientInfo clientInfo = null)
+        {
+            var status = _atolInterface.GetShiftStatus();
+            if (status != 1)
+            {
+                _logger.Fatal($"OpenReceipt: Чек не может быть открыт так как статус смены {status}");
+                throw new ShiftException("Смена не открыта!");
+            }
+            _atolInterface.OpenReceipt(receiptType.isElectron,receiptType.TypeReceipt, receiptType.TaxationType, clientInfo);
+        }
+        public void AddProduct(BasketModel product)
+        {
+            if (product.Cost == 0)
+            {
+                _logger.Fatal("AddProduct: Количество продуктов в корзине должно быть больше 0");
+                throw new ProductException("Количество должно быть больше 0!");
+            }
+            _atolInterface.AddPosition(
+                product.Name,
+                product.Cost,
+                product.Quantity,
+                product.MeasurementUnit,
+                product.PaymentObject,
+                product.TaxType);
+        }
+        public void AddPay(PayModel pay)
+        {
+            if (pay.Sum == 0)
+            {
+                _logger.Fatal("AddPay: Оплата должна быть больше 0");
+                throw new PayException("Оплата должна быть больше 0!");
+            }
+            _atolInterface.Pay(pay.PaymentType, pay.Sum);
+        }
+        public void CloseReceipt(PayModel pay, List<BasketModel> basketModels,
+            ReceiptModel receiptModel, out ChequeFormModel data)
+        {
+            var chequeInfo = _atolInterface.CloseReceipt();
+            
+            if (chequeInfo == null)
+            {
+                var error = _atolInterface.ReadError();
+                _logger.Fatal($"CloseReceipt: Ошибка закрытия чека {error}");
+                throw new ChequeException(_atolInterface.ReadError());
+            }
+            
+            data = DataAboutChequeReceipt(pay, basketModels, receiptModel, chequeInfo);
+            
+            if (data == null)
+            {
+                _logger.Error($"CloseReceipt: Не хватает данных для печати");
+                throw new ChequeException("Не хватает данных для печати");
+            }
+            
+            if(_printerManager != null && !receiptModel.isElectron) _printerManager.Print(data);
+        }
+
+        #endregion
+
+        #region Printer
+
+        #region DataForPrinting
+
         private CloseShiftsFormModel DataAboutCloseShift(CloseShiftsInfo info) 
         {
-           var company = _interface.GetCompanyInfo();
-           var reportOfdExchangeStatus = _interface.CountdownStatus();
-           var FnStatistic = _interface.GetFnStatus();
-           var fnTotal = _interface.GetShiftsTotal();
+           var company = _atolInterface.GetCompanyInfo();
+           var reportOfdExchangeStatus = _atolInterface.CountdownStatus();
+           var FnStatistic = _atolInterface.GetFnStatus();
+           var fnTotal = _atolInterface.GetShiftsTotal();
            
            var errors = reportOfdExchangeStatus.Errors;
            var ofd = reportOfdExchangeStatus.Status;
@@ -132,537 +335,22 @@ namespace FreeKassa.KKT
                TurnoverVat0FnResult = fn.buy.vat0Sum.ToString(),
                TurnoverNoVatFnResult = fn.buy.vatNoSum.ToString(),
                
-               DateTime = info.FiscalParams.fiscalDocumentDateTime.ToString(),
-               ShiftNumber = info.FiscalParams.shiftNumber.ToString(),
-               RegisterNumberKKT = fisqalParams.registrationNumber,
+               DateTime = info.FiscalParams.FiscalDocumentDateTime.ToString(),
+               ShiftNumber = info.FiscalParams.ShiftNumber.ToString(),
+               RegisterNumberKKT = fisqalParams.RegistrationNumber,
                Inn = company.Vatin,
-               FiscalStorageRegisterNumber = info.FiscalParams.fnNumber,
-               FiscalDocumentNumber = info.FiscalParams.fiscalDocumentNumber.ToString(),
-               FiscalFeatureDocument = info.FiscalParams.fiscalDocumentSign,
+               FiscalStorageRegisterNumber = info.FiscalParams.FnNumber,
+               FiscalDocumentNumber = info.FiscalParams.FiscalDocumentNumber.ToString(),
+               FiscalFeatureDocument = info.FiscalParams.FiscalDocumentSign,
                DontConnectOfD = errors.ofd.description,
                NotTransmittedFD = FnStatistic.FnStatus.Warnings.OfdTimeout.ToString(),
                NotTransmittedFrom = errors.lastSuccessConnectionDateTime.ToString(),
                KeyResource = FnStatistic.FnStatus.Warnings.ResourceExhausted.ToString(),
            };
-           
-           
-           // if (!int.TryParse(_interface.GetLastDocumentNumber(), out var documentNumber)) return null;
-           //  var documet = _interface.GetDocument(documentNumber);
-           //  if (documet.Equals(""))
-           //  {
-           //      documet = _interface.GetDocument(documentNumber - 1);
-           //      if (documet.Equals("")) throw new CheckoutException("Запрашиваемый документ отсутвует");
-           //  }
-           //  var documentArray = documet.Split('\n');
-           //  var model = new CloseShiftsFormModel()
-           //  {
-           //      CompanyName = company.Name,
-           //      Address = company.Address,
-           //      CashierName = _kktModel.OperatorName,
-           //  };
-           //  if (documentArray.Length > 50)
-           //  {
-           //      for (int i = 0; i < documentArray.Length; i++) 
-           //      { 
-           //          switch (i)
-           //      {
-           //          case 1:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.FiscalStorageRegisterNumber = split[1].Trim();
-           //              break;
-           //          }
-           //          case 2:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.RegisterNumberKKT = split[1].Trim();
-           //              break;
-           //          }
-           //          case 3:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.Inn = split[1].Trim();
-           //              break;
-           //          }
-           //          case 4:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.FiscalDocumentNumber = split[1].Trim();
-           //              break;
-           //          }
-           //          case 5:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.DateTime = $"{split[1]}:{split[2]}:{split[3]}";
-           //              break;
-           //          }
-           //          case 6:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.FiscalFeatureDocument = split[1].Trim();
-           //              break;
-           //          }
-           //          case 7:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.ShiftNumber = split[1].Trim();
-           //              break;
-           //          }
-           //          
-           //          case 8:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.ChequePerShift = split[1].Trim();
-           //              break;
-           //          }
-           //          case 9:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.FdPerShift = split[1].Trim();
-           //              break;
-           //          }
-           //          case 10:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.NotTransmittedFD = split[1].Trim();
-           //              break;
-           //          }
-           //          case 11:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.NotTransmittedFrom = split[1];
-           //              break;
-           //          }
-           //          case 12:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.DontConnectOfD = split[1].Trim();
-           //              break;
-           //          }
-           //          case 14:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.KeyResource = split[1].Trim();
-           //              break;
-           //          }
-           //          case 16:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.TotalChequeShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 18:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.QuantityChequeShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 19:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountParishTotalShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 20:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountParishCashShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 21:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountParishCashlessShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 22:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountAdvancePaymentsShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 23:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountCreditsShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 24:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountOtherFormPaymentShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 25:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat20ShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 26:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat10ShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 27:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.TurnoverVat0ShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 28:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.TurnoverNoVatShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 29:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat20120ShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 30:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat10110ShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 32:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountReturnReceiptComingShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 34:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountСonsumptionReceiptShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 36:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountReturnReceiptInComingShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 38:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.CorrectionChecksShiftResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 40:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.TotalChequeFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 42:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.QuantityChequeFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 43:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountParishTotalFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 44:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountParishCashFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 45:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountParishCashlessFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 46:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountAdvancePaymentsFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 47:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountCreditsFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 48:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountOtherFormPaymentFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 49:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat20FnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 50:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat10FnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 51:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.TurnoverVat0FnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 52:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.TurnoverNoVatFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 53:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat20120FnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 54:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat10110FnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 56:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountReturnReceiptComingFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 58:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountСonsumptionReceiptFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 60:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountReturnReceiptInComingFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          // case 62:
-           //          // {
-           //          //     var split = documentArray[i].Split(':');
-           //          //     model.CorrectionChecksFnResult = split[1].Trim();
-           //          //     break;
-           //          // }
-           //      } 
-           //      }
-           //      return model;
-           //  }
-           //  for (int i = 0; i < documentArray.Length; i++)
-           //  {
-           //      switch (i)
-           //      {
-           //          case 1:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.FiscalStorageRegisterNumber = split[1].Trim();
-           //              break;
-           //          }
-           //          case 2:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.RegisterNumberKKT = split[1].Trim();
-           //              break;
-           //          }
-           //          case 3:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.Inn = split[1].Trim();
-           //              break;
-           //          }
-           //          case 4:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.FiscalDocumentNumber = split[1];
-           //              break;
-           //          }
-           //          case 5:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.DateTime = $"{split[1]}:{split[2]}:{split[3]}";
-           //              break;
-           //          }
-           //          case 6:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.FiscalFeatureDocument = split[1].Trim();
-           //              break;
-           //          }
-           //          case 7:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.ShiftNumber = split[1].Trim();
-           //              break;
-           //          }
-           //          
-           //          case 8:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.ChequePerShift = split[1].Trim();
-           //              break;
-           //          }
-           //          case 9:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.FdPerShift = split[1].Trim();
-           //              break;
-           //          }
-           //          case 10:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.NotTransmittedFD = split[1].Trim();
-           //              break;
-           //          }
-           //          case 11:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.NotTransmittedFrom = split[1];
-           //              break;
-           //          }
-           //          case 12:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.DontConnectOfD = split[1].Trim();
-           //              break;
-           //          }
-           //          case 14:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.KeyResource = split[1].Trim();
-           //              break;
-           //          }
-           //          case 20:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.TotalChequeFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 22:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.QuantityChequeFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 23:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountParishTotalFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 24:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountParishCashFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 25:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountParishCashlessFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 26:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountAdvancePaymentsFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 27:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountCreditsFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 28:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountOtherFormPaymentFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 29:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat20FnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 30:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat10FnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 31:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.TurnoverVat0FnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 32:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.TurnoverNoVatFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 33:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat20120FnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 34:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountVat10110FnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 36:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountReturnReceiptComingFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 38:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountСonsumptionReceiptFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 40:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.AmountReturnReceiptInComingFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //          case 42:
-           //          {
-           //              var split = documentArray[i].Split(':');
-           //              model.CorrectionChecksFnResult = split[1].Trim();
-           //              break;
-           //          }
-           //      }
-           //  }   
-           
         }
         private OpenShiftsFormModel DataAboutOpeningShift(OpenShiftInfo info)
         {
-            var companyInfo = _interface.GetCompanyInfo();
+            var companyInfo = _atolInterface.GetCompanyInfo();
             if ((info == null) || companyInfo == null)
             {
                 _logger.Error($"OpenShiftsFormModel: Отсутсвует информация о открытии смены: {info} или о компании: {companyInfo}");
@@ -686,7 +374,7 @@ namespace FreeKassa.KKT
         private ChequeFormModel DataAboutChequeReceipt(PayModel payModel, List<BasketModel> basketModels,
             ReceiptModel receiptModel, ChequeInfo chequeInfo)
         {
-            var company = _interface.GetCompanyInfo();
+            var company = _atolInterface.GetCompanyInfo();
             if (payModel == null || basketModels.Count == 0 || receiptModel == null
                 || chequeInfo == null || company == null)
             {
@@ -742,9 +430,9 @@ namespace FreeKassa.KKT
                 TypePay = type,
                 TaxesType = taxesType,
                 AmountOfTaxes = basketModels.Sum(c=> c.QuantityVat).ToString(),
-                SerialNumberKKT = _interface.GetSerialNumber(),
+                SerialNumberKKT = _atolInterface.GetSerialNumber(),
                 TotalPay = chequeInfo.Total.ToString(),
-                DateTime = chequeInfo.FiscalDocumentDateTime,
+                DateTime = chequeInfo.FiscalDocumentDateTime.ToString("u", CultureInfo.InvariantCulture),
                 FiscalStorageRegisterNumber = chequeInfo.FnNumber,
                 RegisterNumberKKT = chequeInfo.RegistrationNumber,
                 Inn = company.Vatin,
@@ -756,192 +444,67 @@ namespace FreeKassa.KKT
 
             return model;
         }
-        private void ShiftsControl()
-        {
-            lock (locker)
-            {
-                if (_kktModel.Shift.WorkKWithBreaks.On == 1) WorkKWithBreaksShiftsControl();
-                else NonStopWorkShiftsControl();
-            }
-        }
 
-        private void WorkKWithBreaksShiftsControl()
-        {
-            var date = FileHelper.GetlastOpenShiftsDateTime();
-            if (date == null)
-                
-            {
-                StartShifts();
-                return;
-            }
-            var dateNow = DateTime.Now;
-            UpdateModel();
-            var status = _interface.GetShiftStatus();
-            if (date.Value.Day == dateNow.Day && date.Value.Month == dateNow.Month)
-            {
-                if (dateNow >= _kktModel.Shift.WorkKWithBreaks.OpeningTime && dateNow < _kktModel.Shift.WorkKWithBreaks.CloseTime)
-                {
-                    if (status == 0)
-                    {
-                        StartShifts();
-                        return;
-                    };
-                }
-                else
-                {
-                    if ((status == 1) || (status == 2)) CloseShifts();
-                    return;
-                }
-            }
-            else
-            {
-                StartShifts();
-            }
-        }
+        #endregion
 
-        private void NonStopWorkShiftsControl()
+        public bool CheckPrinterError()
         {
-            var date = FileHelper.GetlastOpenShiftsDateTime();
-            if (date == null)
-            {
-                _logger.Info("NonStopWorkShiftsControl: Отсутсвует дата последнего запуска смены. Запуск смены");
-                StartShifts();
-                
-                return;
-            }
-            var dateNow = DateTime.Now;
-            UpdateModel();
-            var status = _interface.GetShiftStatus();
+            var status = _atolInterface.GetPrinterStatus();
             
-            if (status == 1)
+            if (status.CutError)
             {
-                if (dateNow.Day == date.Value.Day) return;
-                
-                if (dateNow >= _kktModel.Shift.NonStopWork.ShiftChangeTime)
-                {
-                    _logger.Info($"NonStopWorkShiftsControl: Перезапуск смены:\n Cтатус смены: {status} \n Поседняя дата: {date} \n Сейчас: {dateNow} \n Дата закрытия: {_kktModel.Shift.NonStopWork.ShiftChangeTime}");
-                    StartShifts();
-                }
-                
-                return;
+                _logger.Error("Ошибка отрезчика");
+
+                return true;
             }
 
-            if (status is 2 or 0)
+            if (!status.PaperAvailability)
             {
-                _logger.Info($"NonStopWorkShiftsControl: Запуск смены из-за статуса смены ккт : {status}");
-                StartShifts();
+                _logger.Error("Нет бумаги в принтере");
+
+                return true;
             }
+
+            if (status.PrinterOverheat)
+            {
+                _logger.Error("Перегрев принтера");
+
+                return true;
+            }
+
+            if (status.PrinterConnectionLost)
+            {
+                _logger.Error("Соединение с принетером потеряно");
+
+                return true;
+
+            }
+
+            if (status.PrinterError)
+            {
+                _logger.Error("Принтер в ошибке");
+
+                return true;
+            }
+
+            return false;
         }
 
-        private void UpdateModel() => _kktModel = ConfigHelper.GetSettings().KKT;
-        private bool StartShifts()
-        {
-            var status = _interface.GetShiftStatus();
-            
-            if (status >= 1)
-            {
-                _logger.Info($"StartShifts: Закрытие смены из-за статуса смены ккт : {status}");
-                CloseShifts();
-            }
-            
-            var openShiftsAnswer = _interface.OpenShift();
-            
-            if (openShiftsAnswer == null)
-            {
-                var error = _interface.ReadError();
-                _logger.Fatal($"StartShifts: Открытие смены произошло с ошибкой: {error}");
-                throw new ShiftException(error);
-            }
-            
-            FileHelper.WriteOpenShiftsDateTime();
-            if(_printerManager != null) _printerManager.Print(DataAboutOpeningShift(openShiftsAnswer));
-            
-            return true;
-        }
-        private bool CloseShifts()
-        {
-            var closeShiftsAnswer = _interface.CloseShift();
-            if (closeShiftsAnswer == null)
-            {
-                var error = _interface.ReadError();
-                _logger.Fatal($"CloseShifts: Закрытие смены произошло с ошибкой: {error}");
-                throw new ShiftException(error);
-            }
-            if(_printerManager != null) _printerManager.Print(DataAboutCloseShift(closeShiftsAnswer));
-            
-            return true;
-        }
-        public void OpenReceipt(ReceiptModel receiptType, ClientInfo clientInfo = null)
-        {
-            var status = _interface.GetShiftStatus();
-            if (status != 1)
-            {
-                _logger.Fatal($"OpenReceipt: Чек не может быть открыт так как статус смены {status}");
-                throw new ShiftException("Смена не открыта!");
-            }
-            _interface.OpenReceipt(receiptType.isElectron,receiptType.TypeReceipt, receiptType.TaxationType, clientInfo);
-        }
-        public void AddProduct(BasketModel product)
-        {
-            if (product.Cost == 0)
-            {
-                _logger.Fatal("AddProduct: Количество продуктов в корзине должно быть больше 0");
-                throw new ProductException("Количество должно быть больше 0!");
-            }
-            _interface.AddPosition(
-                product.Name,
-                product.Cost,
-                product.Quantity,
-                product.MeasurementUnit,
-                product.PaymentObject,
-                product.TaxType);
-        }
-        public void AddPay(PayModel pay)
-        {
-            if (pay.Sum == 0)
-            {
-                _logger.Fatal("AddPay: Оплата должна быть больше 0");
-                throw new PayException("Оплата должна быть больше 0!");
-            }
-            _interface.Pay(pay.PaymentType, pay.Sum);
-        }
-        public void CloseReceipt(PayModel pay, List<BasketModel> basketModels,
-            ReceiptModel receiptModel, out ChequeFormModel data)
-        {
-            var chequeInfo = _interface.CloseReceipt();
-            
-            if (chequeInfo == null)
-            {
-                var error = _interface.ReadError();
-                _logger.Fatal($"CloseReceipt: Ошибка закрытия чека {error}");
-                throw new ChequeException(_interface.ReadError());
-            }
-            
-            data = DataAboutChequeReceipt(pay, basketModels, receiptModel, chequeInfo);
-            
-            if (data == null)
-            {
-                _logger.Error($"CloseReceipt: Не хватает данных для печати");
-                throw new ChequeException("Не хватает данных для печати");
-            }
-            
-            if(_printerManager != null && !receiptModel.isElectron) _printerManager.Print(data);
-        }
+        #endregion
+        
+        
+        #endregion
+        
+        
+        
+ 
+        
         //TODO Может быть ошибка из-за того что выполняется другая операция с ккт!
-        private void StartTimer()
-        {
-            int num = 0; 
-            TimerCallback tm = new TimerCallback(CheckTime); 
-            _timer = new Timer(tm,num, 11000, 50000);
-        }
-        private void CheckTime(object source)
-        {
-            ShiftsControl();
-        }
+  
         public void Dispose()
         {
             _timer.Dispose();
-            _interface.CloseConnection();
+            _atolInterface.CloseConnection();
         }
     }
 }

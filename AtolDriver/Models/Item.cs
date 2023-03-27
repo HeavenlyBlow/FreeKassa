@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace AtolDriver.models
+namespace AtolDriver.Models
 {
     public class Item
     {
@@ -27,5 +27,8 @@ namespace AtolDriver.models
 
         [JsonProperty("tax")]
         public Tax Tax { get; set; }
+        
+        [JsonProperty("imcParams")]
+        public ImcParams ImcParams { get; set; }
     }
 }

@@ -1,29 +1,27 @@
 using Atol.Drivers10.Fptr;
 using System;
 using Newtonsoft.Json;
-using AtolDriver.models;
+using AtolDriver.Models;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using AtolDriver.Interface;
 using AtolDriver.Utils;
 using Newtonsoft.Json.Linq;
 
 namespace AtolDriver
 {
-    public class Interface
+    public class AtolInterface
     {
+
+        #region Header
+
         IFptr fptr;
         Operator cashier;
-        Receipt receipt;
-        private bool _printOpenShift = true;
-        private bool _printCloseShiftReceipt = true;
+        IReceipt receipt;
         private bool _isElectronicReceipt;
-
-        public bool PrintOpenShift { set => _printOpenShift = value; }
-        public bool PrintCloseShiftReceipt { set => _printCloseShiftReceipt = value; }
         
-
-        public Interface(int port, int speed)
+        public AtolInterface(int port, int speed)
         {
             fptr = new Fptr();
             fptr.setSingleSetting(Constants.LIBFPTR_SETTING_MODEL, Constants.LIBFPTR_MODEL_ATOL_AUTO.ToString());
@@ -33,6 +31,12 @@ namespace AtolDriver
             fptr.applySingleSettings();
         }
 
+        #endregion
+
+        #region Function
+
+        #region Base
+
         private void SendJson<T>(T request, out Answer answer)
         {
             fptr.setParam(Constants.LIBFPTR_PARAM_JSON_DATA, JsonConvert.SerializeObject(request));
@@ -41,6 +45,23 @@ namespace AtolDriver
                 Code = fptr.processJson(),
                 Json = fptr.getParamString(Constants.LIBFPTR_PARAM_JSON_DATA)
             };
+        }
+        /// <summary>
+        /// Открыть соединение
+        /// </summary>
+        /// <returns></returns>
+        public int OpenConnection()
+        {
+            return fptr.open();
+        }
+        
+        /// <summary>
+        /// Закрыть соединение
+        /// </summary>
+        /// <returns></returns>
+        public int CloseConnection()
+        {
+            return fptr.close();
         }
         
         /// <summary>
@@ -54,83 +75,18 @@ namespace AtolDriver
         }
         
         /// <summary>
-        /// Получить номер последнего документа в ФН
+        /// Установка времени ккт
         /// </summary>
-        /// <returns></returns>
-        public string GetLastDocumentNumber()
-        {
-            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-            fptr.queryData();
-            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_NUMBER)}";
-        }
-        public string GetFfdVersion()
-        {
-            fptr.setParam(Constants.LIBFPTR_PARAM_FN_DATA_TYPE, Constants.LIBFPTR_FNDT_FFD_VERSIONS);
-            fptr.fnQueryData();
-            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_FFD_VERSION)}";
-        }
         public void SetDateTime()
         {
             fptr.setParam(Constants.LIBFPTR_PARAM_DATE_TIME, DateTime.Now);
             fptr.writeDateTime();
         }
-        /// <summary>
-        /// Получить серийный номер ккт
-        /// </summary>
-        /// <returns>Серийный номер</returns>
-        public string GetSerialNumber()
-        {
-            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-            fptr.queryData();
-            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}";
-        }
-        public int OpenConnection()
-        {
-            return fptr.open();
-        }
-
-        public int CloseConnection()
-        {
-            return fptr.close();
-        }
-        /// <summary>
-        /// Утсновка оператора на смену
-        /// </summary>
-        /// <param name="operatorName">Имя опреатора</param>
-        /// <param name="operatorInn">Инн оператора</param>
-        public void SetOperator(string operatorName, string operatorInn)
-        {
-            cashier = new Operator
-            {
-                Name = operatorName,
-                Vatin = operatorInn
-            };
-        }
-        /// <summary>
-        /// Открыть смену
-        /// </summary>
-        /// <returns>код ошибки</returns>
-        public OpenShiftInfo? OpenShift()
-        {
-            SendJson(new OpenShift
-            {
-                Operator = cashier,
-            }, out var answer);
-            
-            if (answer.Code == -1) return null;
-            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new OpenShiftInfo(), token: "fiscalParams");
-            if (jobj == null) return null;
-            return (OpenShiftInfo)jobj;
-        }
         
-        /// <summary>
-        /// Отмена чека
-        /// </summary>
-        /// <returns></returns>
-        public int CanselReceipt()
-        {
-            return fptr.cancelReceipt();
-        }
+
+        #endregion
+
+        #region Receipt
 
         /// <summary>
         /// Открыть чек
@@ -139,8 +95,9 @@ namespace AtolDriver
         /// <param name="typeReceiptEnum">Тип чека</param>
         /// <param name="taxationTypeEnum">Тип налогообложения</param>
         /// <param name="client">Информация о клиенте </param>
+        /// <param name="isMarked">Маркированный чек</param>
         public void OpenReceipt(bool isElectronicReceipt ,TypeReceipt typeReceiptEnum ,
-            TaxationTypeEnum taxationTypeEnum, ClientInfo? client = null)
+            TaxationTypeEnum taxationTypeEnum, ClientInfo? client = null, bool isMarked = false)
         {
             receipt = new Receipt
             {
@@ -152,6 +109,11 @@ namespace AtolDriver
                 Payments = new List<Payments>(),
                 Electronic = isElectronicReceipt
             };
+
+            if (isMarked)
+            {
+                ((MarkedReceipt)receipt).ValidateMarkingCodes = true;
+            }
         }
         
         /// <summary>
@@ -164,9 +126,9 @@ namespace AtolDriver
         /// <param name="paymentObjectEnum">Признак предмета расчета</param>
         /// <param name="taxationTypeEnum">Процент налога</param>
         public void AddPosition(string name, double price, double quantity, MeasurementUnitEnum measurementUnitEnum,
-            PaymentObjectEnum paymentObjectEnum, TaxTypeEnum taxationTypeEnum)
+            PaymentObjectEnum paymentObjectEnum, TaxTypeEnum taxationTypeEnum, string ims = "")
         {
-            receipt.Items.Add(new Item
+            var item = new Item()
             {
                 Type = "position",
                 Name = name,
@@ -176,7 +138,20 @@ namespace AtolDriver
                 PaymentObject = GetPaymentObjectEnum(paymentObjectEnum),
                 Amount = price * quantity,
                 Tax = new Tax { Type = GetTaxTypeEnum(taxationTypeEnum) }
-            });
+            };
+            
+            if (((MarkedReceipt)receipt).ValidateMarkingCodes && !ims.Equals(""))
+            {
+                item.ImcParams = new ImcParams()
+                {
+                    Imc = ims,
+                    ImcType = "auto",
+                    ItemEstimatedStatus = "itemPieceSold",
+                    ImcModeProcessing = 0
+                };
+            }
+            
+            receipt.Items.Add(item);
         }
         
         /// <summary>
@@ -207,6 +182,62 @@ namespace AtolDriver
         }
         
         /// <summary>
+        /// Отмена чека
+        /// </summary>
+        /// <returns></returns>
+        public int CanselReceipt()
+        {
+            return fptr.cancelReceipt();
+        }
+        
+        
+        #endregion
+
+        #region Shift
+
+        /// <summary>
+        /// Открыть смену
+        /// </summary>
+        /// <returns>код ошибки</returns>
+        public OpenShiftInfo? OpenShift()
+        {
+            SendJson(new OpenShift
+            {
+                Operator = cashier,
+            }, out var answer);
+            
+            if (answer.Code == -1) return null;
+            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new OpenShiftInfo(), token: "fiscalParams");
+            if (jobj == null) return null;
+            return (OpenShiftInfo)jobj;
+        }
+        
+        /// <summary>
+        /// Утсновка оператора на смену
+        /// </summary>
+        /// <param name="operatorName">Имя опреатора</param>
+        /// <param name="operatorInn">Инн оператора</param>
+        public void SetOperator(string operatorName, string operatorInn)
+        {
+            cashier = new Operator
+            {
+                Name = operatorName,
+                Vatin = operatorInn
+            };
+        }
+        
+        /// <summary>
+        /// Состояние смены
+        /// </summary>
+        /// <returns>0 - закрыта, 1 - октрыта</returns>
+        public int GetShiftStatus()
+        {
+            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            var code = fptr.queryData();
+            return (int)fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE);
+        }
+        
+        /// <summary>
         /// Закрыть смену
         /// </summary>
         /// <returns>Код ошибки</returns>
@@ -223,18 +254,47 @@ namespace AtolDriver
             if (jobj == null) return null;
             return (CloseShiftsInfo)jobj;
         }
-        // public Answer CloseShift()
-        // {
-        //     SendJson(new CloseShift
-        //     {
-        //         Type = "closeShift",
-        //         Operator = cashier
-        //     }, out var answer);
-        //
-        //     if (answer.Code == -1) return null;
-        //     return answer;
-        // }
 
+        #endregion
+
+        #region Info
+
+        /// <summary>
+        /// Получить номер последнего документа в ФН
+        /// </summary>
+        /// <returns></returns>
+        public string GetLastDocumentNumber()
+        {
+            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            fptr.queryData();
+            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_NUMBER)}";
+        }
+        
+        /// <summary>
+        /// Получить версию ффд
+        /// </summary>
+        /// <returns></returns>
+        public string GetFfdVersion()
+        {
+            fptr.setParam(Constants.LIBFPTR_PARAM_FN_DATA_TYPE, Constants.LIBFPTR_FNDT_FFD_VERSIONS);
+            fptr.fnQueryData();
+            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_FFD_VERSION)}";
+        }
+        
+        /// <summary>
+        /// Получить серийный номер ккт
+        /// </summary>
+        /// <returns>Серийный номер</returns>
+        public string GetSerialNumber()
+        {
+            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            fptr.queryData();
+            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}";
+        }
+        /// <summary>
+        /// Сменные итоги
+        /// </summary>
+        /// <returns></returns>
         public CountdownStatusInfo? CountdownStatus()
         {
             SendJson(new Countdown
@@ -248,6 +308,10 @@ namespace AtolDriver
             if (jobj == null) return null;
             return (CountdownStatusInfo)jobj;
         }
+        /// <summary>
+        /// Информация о компании
+        /// </summary>
+        /// <returns></returns>
         public CompanyInfo? GetCompanyInfo()
         {
             SendJson(new Request()
@@ -260,18 +324,10 @@ namespace AtolDriver
             if (jobj == null) return null;
             return (CompanyInfo)jobj;
         }
-        
         /// <summary>
-        /// Состояние смены
+        /// Инфомация о фискальном накопителе
         /// </summary>
-        /// <returns>0 - закрыта, 1 - октрыта</returns>
-        public int GetShiftStatus()
-        {
-            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-            var code = fptr.queryData();
-            return (int)fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE);
-        }
-
+        /// <returns></returns>
         public FnStatistic? GetFnStatus()
         {
             SendJson(new Request()
@@ -284,7 +340,10 @@ namespace AtolDriver
             if (jobj == null) return null;
             return (FnStatistic)jobj;
         }
-        
+        /// <summary>
+        /// Информация о смене
+        /// </summary>
+        /// <returns></returns>
         public Shifts? GetShiftsTotal()
         {
             SendJson(new Request()
@@ -298,6 +357,68 @@ namespace AtolDriver
             return (Shifts)jobj;
         }
         
+        public string GetStatus()
+        {
+            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            fptr.queryData();
+            var status = $"---------Status-----------/n" +
+                         $" operatorID {fptr.getParamInt(Constants.LIBFPTR_PARAM_OPERATOR_ID)}/n" +
+                         $" logicalNumber {fptr.getParamInt(Constants.LIBFPTR_PARAM_LOGICAL_NUMBER)}" +
+                         $" shiftState {fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE)}" +
+                         $" model = {fptr.getParamInt(Constants.LIBFPTR_PARAM_MODEL)}" +
+                         $" mode = {fptr.getParamInt(Constants.LIBFPTR_PARAM_MODEL)}" +
+                         $" submode = {fptr.getParamInt(Constants.LIBFPTR_PARAM_SUBMODE)}" +
+                         $" receiptNumber = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_NUMBER)}" +
+                         $" documentNumber = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_NUMBER)}" +
+                         $" shiftNumber = {fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_NUMBER)}" +
+                         $" receiptType = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_TYPE)}" +
+                         $" documentType = {fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_TYPE)}" +
+                         $" lineLength = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_LINE_LENGTH)}" +
+                         $" lineLengthPix = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_LINE_LENGTH_PIX)}" +
+                         $" receiptSum = {fptr.getParamDouble(Constants.LIBFPTR_PARAM_RECEIPT_SUM)}" +
+                         $" isFiscalDevice ={fptr.getParamBool(Constants.LIBFPTR_PARAM_FISCAL)}" +
+                         $" isFiscalFN = {fptr.getParamBool(Constants.LIBFPTR_PARAM_FN_FISCAL)}" +
+                         $" isFNPresent = {fptr.getParamBool(Constants.LIBFPTR_PARAM_FN_PRESENT)}" +
+                         $" isCashDrawerOpened = {fptr.getParamBool(Constants.LIBFPTR_PARAM_CASHDRAWER_OPENED)}" +
+                         $" isPaperPresent = {fptr.getParamBool(Constants.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)}" +
+                         $" isPaperNearEnd = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PAPER_NEAR_END)}" +
+                         $" isCoverOpened = {fptr.getParamBool(Constants.LIBFPTR_PARAM_COVER_OPENED)}" +
+                         $" isPrinterConnectionLost = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_CONNECTION_LOST)}" +
+                         $" isPrinterError = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_ERROR)}" +
+                         $" isCutError = {fptr.getParamBool(Constants.LIBFPTR_PARAM_CUT_ERROR)}" +
+                         $" isPrinterOverheat = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_OVERHEAT)}" +
+                         $" isDeviceBlocked = {fptr.getParamBool(Constants.LIBFPTR_PARAM_BLOCKED)}" +
+                         $" dateTime = {fptr.getParamDateTime(Constants.LIBFPTR_PARAM_DATE_TIME)}" +
+                         $" serialNumber = {fptr.getParamString(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}" +
+                         $" modelName = {fptr.getParamString(Constants.LIBFPTR_PARAM_MODEL_NAME)}" +
+                         $" firmwareVersion = {fptr.getParamString(Constants.LIBFPTR_PARAM_UNIT_VERSION)}" +
+                         $"--------------------------";
+
+            return status;
+        }
+        
+        /// <summary>
+        /// Статус принтера
+        /// </summary>
+        /// <returns></returns>
+        public PrinterStatus GetPrinterStatus()
+        {
+            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            fptr.queryData();
+            return new PrinterStatus()
+            {
+                CutError = fptr.getParamBool(Constants.LIBFPTR_PARAM_CUT_ERROR),
+                PrinterOverheat = fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_OVERHEAT),
+                PrinterError = fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_ERROR),
+                PrinterConnectionLost = fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_CONNECTION_LOST),
+                PaperAvailability = fptr.getParamBool(Constants.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)
+            };
+        }
+
+        #endregion
+
+        #region Documents
+
         /// <summary>
         /// Получить документ по номеру
         /// </summary>
@@ -388,49 +509,12 @@ namespace AtolDriver
                     return "";
             }
         }
-        
-        public string GetStatus()
-        {
-            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-            fptr.queryData();
-            var status = $"---------Status-----------/n" +
-                         $" operatorID {fptr.getParamInt(Constants.LIBFPTR_PARAM_OPERATOR_ID)}/n" +
-                         $" logicalNumber {fptr.getParamInt(Constants.LIBFPTR_PARAM_LOGICAL_NUMBER)}" +
-                         $" shiftState {fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE)}" +
-                         $" model = {fptr.getParamInt(Constants.LIBFPTR_PARAM_MODEL)}" +
-                         $" mode = {fptr.getParamInt(Constants.LIBFPTR_PARAM_MODEL)}" +
-                         $" submode = {fptr.getParamInt(Constants.LIBFPTR_PARAM_SUBMODE)}" +
-                         $" receiptNumber = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_NUMBER)}" +
-                         $" documentNumber = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_NUMBER)}" +
-                         $" shiftNumber = {fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_NUMBER)}" +
-                         $" receiptType = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_TYPE)}" +
-                         $" documentType = {fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_TYPE)}" +
-                         $" lineLength = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_LINE_LENGTH)}" +
-                         $" lineLengthPix = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_LINE_LENGTH_PIX)}" +
-                         $" receiptSum = {fptr.getParamDouble(Constants.LIBFPTR_PARAM_RECEIPT_SUM)}" +
-                         $" isFiscalDevice ={fptr.getParamBool(Constants.LIBFPTR_PARAM_FISCAL)}" +
-                         $" isFiscalFN = {fptr.getParamBool(Constants.LIBFPTR_PARAM_FN_FISCAL)}" +
-                         $" isFNPresent = {fptr.getParamBool(Constants.LIBFPTR_PARAM_FN_PRESENT)}" +
-                         $" isCashDrawerOpened = {fptr.getParamBool(Constants.LIBFPTR_PARAM_CASHDRAWER_OPENED)}" +
-                         $" isPaperPresent = {fptr.getParamBool(Constants.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)}" +
-                         $" isPaperNearEnd = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PAPER_NEAR_END)}" +
-                         $" isCoverOpened = {fptr.getParamBool(Constants.LIBFPTR_PARAM_COVER_OPENED)}" +
-                         $" isPrinterConnectionLost = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_CONNECTION_LOST)}" +
-                         $" isPrinterError = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_ERROR)}" +
-                         $" isCutError = {fptr.getParamBool(Constants.LIBFPTR_PARAM_CUT_ERROR)}" +
-                         $" isPrinterOverheat = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_OVERHEAT)}" +
-                         $" isDeviceBlocked = {fptr.getParamBool(Constants.LIBFPTR_PARAM_BLOCKED)}" +
-                         $" dateTime = {fptr.getParamDateTime(Constants.LIBFPTR_PARAM_DATE_TIME)}" +
-                         $" serialNumber = {fptr.getParamString(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}" +
-                         $" modelName = {fptr.getParamString(Constants.LIBFPTR_PARAM_MODEL_NAME)}" +
-                         $" firmwareVersion = {fptr.getParamString(Constants.LIBFPTR_PARAM_UNIT_VERSION)}" +
-                         $"--------------------------";
 
-            return status;
-        }
-        
+        #endregion
 
-        private static string GetTaxType(TaxationTypeEnum taxationTypeEnum) => taxationTypeEnum switch
+        #region Enum
+
+                private static string GetTaxType(TaxationTypeEnum taxationTypeEnum) => taxationTypeEnum switch
         {
             TaxationTypeEnum.Osn => "osn",
             TaxationTypeEnum.TtEsn => "esn",
@@ -505,10 +589,46 @@ namespace AtolDriver
             _ => ""
         };
 
+        #endregion
+
+        #endregion
+        
+        
+        
+
+        
+        
+        
+        
+        
+        
+        
+
+       
+        
+        
+        
+        
+
+ 
+        
+        
+
+
+        
+       
+        
+        
+        
+
+
+
 
     }
 
-    public enum PaymentTypeEnum
+    #region Enum
+
+     public enum PaymentTypeEnum
     {
         /// <summary>
         /// наличными
@@ -674,4 +794,8 @@ namespace AtolDriver
         /// </summary>
         BuyReturnCorrection
     }
+
+    #endregion
+
+   
 }

@@ -4,10 +4,11 @@ using System.Drawing;
 using System.IO;
 using System.Threading;
 using AtolDriver;
-using AtolDriver.models;
+using AtolDriver.Models;
 using AtolDriver.Utils;
 using ESCPOS_NET.Utils;
 using FreeKassa.Model;
+using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Model.PrinitngDocumensModel;
 using FreeKassa.Utils;
 using Newtonsoft.Json.Linq;
@@ -105,14 +106,15 @@ namespace FreeKassa
             // });
 
 
-            // k.SuccessfullyReceipt += (sender, eventArgs) =>
-            // {
-            //     Console.WriteLine("Регистрация успешна");
-            // };
+            k.Successfully += delegate(ChequeFormModel cheque)
+            {
+                var d = cheque;
+                Console.Write("+");
+            };
 
             k.RegisterReceipt(new ReceiptModel()
                 {
-                    isElectron = false,
+                    isElectron = true,
                     TaxationType = TaxationTypeEnum.TtPatent,
                     TypeReceipt = TypeReceipt.Sell
                 },

@@ -1,7 +1,8 @@
 ﻿using System;
+using AtolDriver.Interface;
 using Newtonsoft.Json;
 
-namespace AtolDriver.models;
+namespace AtolDriver.Models;
 
 public class CountdownStatusInfo
 {
@@ -70,22 +71,24 @@ public class CountdownStatusInfo
         public Ofd ofd { get; set; }
     }
 
-    public class FiscalParams
+    public class FiscalParams : IFiscalParam
     {
-        public DateTime fiscalDocumentDateTime { get; set; }
-        public int fiscalDocumentNumber { get; set; }
-        public string fiscalDocumentSign { get; set; }
-        public string fnNumber { get; set; }
+        public DateTime FiscalDocumentDateTime { get; set; }
+        public int FiscalDocumentNumber { get; set; }
+        public string FiscalDocumentSign { get; set; }
+        public string FnNumber { get; set; }
         [JsonProperty("fnQuantityCounters")]
         public FnQuantityCounters fnQuantityCounters { get; set; }
         [JsonProperty("fnTotals")]
         public FnTotals fnTotals { get; set; }
         [JsonProperty("fnUnsentDocsCounters")]
         public FnUnsentDocsCounters fnUnsentDocsCounters { get; set; }
-        public string fnsUrl { get; set; }
+        public string FnsUrl { get; set; }
+        public int Total { get; set; }
         public int receiptsCount { get; set; }
-        public string registrationNumber { get; set; }
-        public int shiftNumber { get; set; }
+        public string RegistrationNumber { get; set; }
+        public int ShiftNumber { get; set; }
+        
     }
 
     public class Fn

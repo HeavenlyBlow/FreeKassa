@@ -18,6 +18,7 @@ namespace FreeKassa.Model
     public class KKT
     {
         public int PrinterManagement { get; set; }
+        public bool MarkedProducts { get; set; }
         public int SerialPort { get; set; }
         public int BaundRate { get; set; }
         public string OperatorName { get; set; }
