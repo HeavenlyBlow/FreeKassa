@@ -132,7 +132,7 @@ namespace FreeKassa
                 },
                 new PayModel()
                 {
-                    PaymentType = PaymentTypeEnum.electronically,
+                    PaymentType = PaymentTypeEnum.Electronically,
                     Sum = 2900
                 }
                 // new ClientInfo()
@@ -163,7 +163,7 @@ namespace FreeKassa
                 },
                 new PayModel()
                 {
-                    PaymentType = PaymentTypeEnum.cash,
+                    PaymentType = PaymentTypeEnum.Cash,
                     Sum = 50
                 }
                 // new ClientInfo()

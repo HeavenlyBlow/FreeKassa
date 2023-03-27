@@ -1,13 +1,10 @@
+using System.Globalization;
 using Atol.Drivers10.Fptr;
-using System;
 using Newtonsoft.Json;
 using AtolDriver.Models;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
 using AtolDriver.Interface;
 using AtolDriver.Utils;
-using Newtonsoft.Json.Linq;
 
 namespace AtolDriver
 {
@@ -16,19 +13,18 @@ namespace AtolDriver
 
         #region Header
 
-        IFptr fptr;
-        Operator cashier;
-        IReceipt receipt;
-        private bool _isElectronicReceipt;
-        
+        readonly IFptr _fptr;
+        Operator _cashier;
+        IReceipt _receipt;
+
         public AtolInterface(int port, int speed)
         {
-            fptr = new Fptr();
-            fptr.setSingleSetting(Constants.LIBFPTR_SETTING_MODEL, Constants.LIBFPTR_MODEL_ATOL_AUTO.ToString());
-            fptr.setSingleSetting(Constants.LIBFPTR_SETTING_PORT, Constants.LIBFPTR_PORT_COM.ToString());
-            fptr.setSingleSetting(Constants.LIBFPTR_SETTING_COM_FILE, "COM" + port);
-            fptr.setSingleSetting(Constants.LIBFPTR_SETTING_BAUDRATE, speed.ToString());
-            fptr.applySingleSettings();
+            _fptr = new Fptr();
+            _fptr.setSingleSetting(Constants.LIBFPTR_SETTING_MODEL, Constants.LIBFPTR_MODEL_ATOL_AUTO.ToString());
+            _fptr.setSingleSetting(Constants.LIBFPTR_SETTING_PORT, Constants.LIBFPTR_PORT_COM.ToString());
+            _fptr.setSingleSetting(Constants.LIBFPTR_SETTING_COM_FILE, "COM" + port);
+            _fptr.setSingleSetting(Constants.LIBFPTR_SETTING_BAUDRATE, speed.ToString());
+            _fptr.applySingleSettings();
         }
 
         #endregion
@@ -39,11 +35,11 @@ namespace AtolDriver
 
         private void SendJson<T>(T request, out Answer answer)
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_JSON_DATA, JsonConvert.SerializeObject(request));
+            _fptr.setParam(Constants.LIBFPTR_PARAM_JSON_DATA, JsonConvert.SerializeObject(request));
             answer = new Answer()
             {
-                Code = fptr.processJson(),
-                Json = fptr.getParamString(Constants.LIBFPTR_PARAM_JSON_DATA)
+                Code = _fptr.processJson(),
+                Json = _fptr.getParamString(Constants.LIBFPTR_PARAM_JSON_DATA)
             };
         }
         /// <summary>
@@ -52,7 +48,7 @@ namespace AtolDriver
         /// <returns></returns>
         public int OpenConnection()
         {
-            return fptr.open();
+            return _fptr.open();
         }
         
         /// <summary>
@@ -61,7 +57,7 @@ namespace AtolDriver
         /// <returns></returns>
         public int CloseConnection()
         {
-            return fptr.close();
+            return _fptr.close();
         }
         
         /// <summary>
@@ -70,8 +66,8 @@ namespace AtolDriver
         /// <returns></returns>
         public string ReadError()
         {
-            fptr.errorCode();
-            return fptr.errorDescription();
+            _fptr.errorCode();
+            return _fptr.errorDescription();
         }
         
         /// <summary>
@@ -79,8 +75,8 @@ namespace AtolDriver
         /// </summary>
         public void SetDateTime()
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_DATE_TIME, DateTime.Now);
-            fptr.writeDateTime();
+            _fptr.setParam(Constants.LIBFPTR_PARAM_DATE_TIME, DateTime.Now);
+            _fptr.writeDateTime();
         }
         
 
@@ -99,11 +95,11 @@ namespace AtolDriver
         public void OpenReceipt(bool isElectronicReceipt ,TypeReceipt typeReceiptEnum ,
             TaxationTypeEnum taxationTypeEnum, ClientInfo? client = null, bool isMarked = false)
         {
-            receipt = new Receipt
+            _receipt = new Receipt
             {
                 Type = GetTypeReceipt(typeReceiptEnum),
                 TaxationType = GetTaxType(taxationTypeEnum),
-                Operator = cashier,
+                Operator = _cashier,
                 Client = client,
                 Items = new List<Item>(),
                 Payments = new List<Payments>(),
@@ -112,10 +108,10 @@ namespace AtolDriver
 
             if (isMarked)
             {
-                ((MarkedReceipt)receipt).ValidateMarkingCodes = true;
+                ((MarkedReceipt)_receipt).ValidateMarkingCodes = true;
             }
         }
-        
+
         /// <summary>
         /// Добавление товаров в чек
         /// </summary>
@@ -125,6 +121,7 @@ namespace AtolDriver
         /// <param name="measurementUnitEnum">Единицы измерения кол-ва товара</param>
         /// <param name="paymentObjectEnum">Признак предмета расчета</param>
         /// <param name="taxationTypeEnum">Процент налога</param>
+        /// <param name="ims">Код маркировки</param>
         public void AddPosition(string name, double price, double quantity, MeasurementUnitEnum measurementUnitEnum,
             PaymentObjectEnum paymentObjectEnum, TaxTypeEnum taxationTypeEnum, string ims = "")
         {
@@ -140,7 +137,7 @@ namespace AtolDriver
                 Tax = new Tax { Type = GetTaxTypeEnum(taxationTypeEnum) }
             };
             
-            if (((MarkedReceipt)receipt).ValidateMarkingCodes && !ims.Equals(""))
+            if (((MarkedReceipt)_receipt).ValidateMarkingCodes && !ims.Equals(""))
             {
                 item.ImcParams = new ImcParams()
                 {
@@ -151,7 +148,7 @@ namespace AtolDriver
                 };
             }
             
-            receipt.Items.Add(item);
+            _receipt.Items.Add(item);
         }
         
         /// <summary>
@@ -161,7 +158,7 @@ namespace AtolDriver
         /// <param name="sum">Сумма</param>
         public void Pay(PaymentTypeEnum paymentTypeEnum , double sum)
         {
-            receipt.Payments.Add(new Payments
+            _receipt.Payments.Add(new Payments
             {
                 Type = GetPaymentTypeEnum(paymentTypeEnum),
                 Sum = sum
@@ -174,7 +171,7 @@ namespace AtolDriver
         /// <returns>Код ошибки</returns>
         public ChequeInfo? CloseReceipt()
         {
-            SendJson(receipt, out var answer);
+            SendJson(_receipt, out var answer);
             if (answer.Code == -1) { return null; }
             var jobj = DeserializeHelper.Deserialize(answer.Json, model: new ChequeInfo(), token: "fiscalParams");
             if (jobj == null) return null;
@@ -187,7 +184,7 @@ namespace AtolDriver
         /// <returns></returns>
         public int CanselReceipt()
         {
-            return fptr.cancelReceipt();
+            return _fptr.cancelReceipt();
         }
         
         
@@ -203,7 +200,7 @@ namespace AtolDriver
         {
             SendJson(new OpenShift
             {
-                Operator = cashier,
+                Operator = _cashier,
             }, out var answer);
             
             if (answer.Code == -1) return null;
@@ -219,7 +216,7 @@ namespace AtolDriver
         /// <param name="operatorInn">Инн оператора</param>
         public void SetOperator(string operatorName, string operatorInn)
         {
-            cashier = new Operator
+            _cashier = new Operator
             {
                 Name = operatorName,
                 Vatin = operatorInn
@@ -232,9 +229,9 @@ namespace AtolDriver
         /// <returns>0 - закрыта, 1 - октрыта</returns>
         public int GetShiftStatus()
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-            var code = fptr.queryData();
-            return (int)fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE);
+            _fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            _fptr.queryData();
+            return (int)_fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE);
         }
         
         /// <summary>
@@ -246,7 +243,7 @@ namespace AtolDriver
             SendJson(new CloseShift
             {
                 Type = "closeShift",
-                Operator = cashier
+                Operator = _cashier
             }, out var answer);
         
             if (answer.Code == -1) return null;
@@ -265,9 +262,9 @@ namespace AtolDriver
         /// <returns></returns>
         public string GetLastDocumentNumber()
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-            fptr.queryData();
-            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_NUMBER)}";
+            _fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            _fptr.queryData();
+            return $"{_fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_NUMBER)}";
         }
         
         /// <summary>
@@ -276,9 +273,9 @@ namespace AtolDriver
         /// <returns></returns>
         public string GetFfdVersion()
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_FN_DATA_TYPE, Constants.LIBFPTR_FNDT_FFD_VERSIONS);
-            fptr.fnQueryData();
-            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_FFD_VERSION)}";
+            _fptr.setParam(Constants.LIBFPTR_PARAM_FN_DATA_TYPE, Constants.LIBFPTR_FNDT_FFD_VERSIONS);
+            _fptr.fnQueryData();
+            return $"{_fptr.getParamInt(Constants.LIBFPTR_PARAM_FFD_VERSION)}";
         }
         
         /// <summary>
@@ -287,9 +284,9 @@ namespace AtolDriver
         /// <returns>Серийный номер</returns>
         public string GetSerialNumber()
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-            fptr.queryData();
-            return $"{fptr.getParamInt(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}";
+            _fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            _fptr.queryData();
+            return $"{_fptr.getParamInt(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}";
         }
         /// <summary>
         /// Сменные итоги
@@ -300,7 +297,7 @@ namespace AtolDriver
             SendJson(new Countdown
             {
                 Type = "reportOfdExchangeStatus",
-                Operator = cashier
+                Operator = _cashier
             }, out var answer);
             
             if (answer.Code == -1) return null;
@@ -337,8 +334,7 @@ namespace AtolDriver
 
             if (answer.Code == -1) return null;
             var jobj = JsonConvert.DeserializeObject<FnStatistic>(answer.Json);
-            if (jobj == null) return null;
-            return (FnStatistic)jobj;
+            return jobj ?? null;
         }
         /// <summary>
         /// Информация о смене
@@ -353,45 +349,44 @@ namespace AtolDriver
 
             if (answer.Code == -1) return null;
             var jobj = JsonConvert.DeserializeObject<Shifts>(answer.Json);
-            if (jobj == null) return null;
-            return (Shifts)jobj;
+            return jobj ?? null;
         }
         
         public string GetStatus()
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-            fptr.queryData();
+            _fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            _fptr.queryData();
             var status = $"---------Status-----------/n" +
-                         $" operatorID {fptr.getParamInt(Constants.LIBFPTR_PARAM_OPERATOR_ID)}/n" +
-                         $" logicalNumber {fptr.getParamInt(Constants.LIBFPTR_PARAM_LOGICAL_NUMBER)}" +
-                         $" shiftState {fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE)}" +
-                         $" model = {fptr.getParamInt(Constants.LIBFPTR_PARAM_MODEL)}" +
-                         $" mode = {fptr.getParamInt(Constants.LIBFPTR_PARAM_MODEL)}" +
-                         $" submode = {fptr.getParamInt(Constants.LIBFPTR_PARAM_SUBMODE)}" +
-                         $" receiptNumber = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_NUMBER)}" +
-                         $" documentNumber = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_NUMBER)}" +
-                         $" shiftNumber = {fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_NUMBER)}" +
-                         $" receiptType = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_TYPE)}" +
-                         $" documentType = {fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_TYPE)}" +
-                         $" lineLength = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_LINE_LENGTH)}" +
-                         $" lineLengthPix = {fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_LINE_LENGTH_PIX)}" +
-                         $" receiptSum = {fptr.getParamDouble(Constants.LIBFPTR_PARAM_RECEIPT_SUM)}" +
-                         $" isFiscalDevice ={fptr.getParamBool(Constants.LIBFPTR_PARAM_FISCAL)}" +
-                         $" isFiscalFN = {fptr.getParamBool(Constants.LIBFPTR_PARAM_FN_FISCAL)}" +
-                         $" isFNPresent = {fptr.getParamBool(Constants.LIBFPTR_PARAM_FN_PRESENT)}" +
-                         $" isCashDrawerOpened = {fptr.getParamBool(Constants.LIBFPTR_PARAM_CASHDRAWER_OPENED)}" +
-                         $" isPaperPresent = {fptr.getParamBool(Constants.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)}" +
-                         $" isPaperNearEnd = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PAPER_NEAR_END)}" +
-                         $" isCoverOpened = {fptr.getParamBool(Constants.LIBFPTR_PARAM_COVER_OPENED)}" +
-                         $" isPrinterConnectionLost = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_CONNECTION_LOST)}" +
-                         $" isPrinterError = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_ERROR)}" +
-                         $" isCutError = {fptr.getParamBool(Constants.LIBFPTR_PARAM_CUT_ERROR)}" +
-                         $" isPrinterOverheat = {fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_OVERHEAT)}" +
-                         $" isDeviceBlocked = {fptr.getParamBool(Constants.LIBFPTR_PARAM_BLOCKED)}" +
-                         $" dateTime = {fptr.getParamDateTime(Constants.LIBFPTR_PARAM_DATE_TIME)}" +
-                         $" serialNumber = {fptr.getParamString(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}" +
-                         $" modelName = {fptr.getParamString(Constants.LIBFPTR_PARAM_MODEL_NAME)}" +
-                         $" firmwareVersion = {fptr.getParamString(Constants.LIBFPTR_PARAM_UNIT_VERSION)}" +
+                         $" operatorID {_fptr.getParamInt(Constants.LIBFPTR_PARAM_OPERATOR_ID)}/n" +
+                         $" logicalNumber {_fptr.getParamInt(Constants.LIBFPTR_PARAM_LOGICAL_NUMBER)}" +
+                         $" shiftState {_fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE)}" +
+                         $" model = {_fptr.getParamInt(Constants.LIBFPTR_PARAM_MODEL)}" +
+                         $" mode = {_fptr.getParamInt(Constants.LIBFPTR_PARAM_MODEL)}" +
+                         $" submode = {_fptr.getParamInt(Constants.LIBFPTR_PARAM_SUBMODE)}" +
+                         $" receiptNumber = {_fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_NUMBER)}" +
+                         $" documentNumber = {_fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_NUMBER)}" +
+                         $" shiftNumber = {_fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_NUMBER)}" +
+                         $" receiptType = {_fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_TYPE)}" +
+                         $" documentType = {_fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_TYPE)}" +
+                         $" lineLength = {_fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_LINE_LENGTH)}" +
+                         $" lineLengthPix = {_fptr.getParamInt(Constants.LIBFPTR_PARAM_RECEIPT_LINE_LENGTH_PIX)}" +
+                         $" receiptSum = {_fptr.getParamDouble(Constants.LIBFPTR_PARAM_RECEIPT_SUM)}" +
+                         $" isFiscalDevice ={_fptr.getParamBool(Constants.LIBFPTR_PARAM_FISCAL)}" +
+                         $" isFiscalFN = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_FN_FISCAL)}" +
+                         $" isFNPresent = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_FN_PRESENT)}" +
+                         $" isCashDrawerOpened = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_CASHDRAWER_OPENED)}" +
+                         $" isPaperPresent = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)}" +
+                         $" isPaperNearEnd = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_PAPER_NEAR_END)}" +
+                         $" isCoverOpened = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_COVER_OPENED)}" +
+                         $" isPrinterConnectionLost = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_CONNECTION_LOST)}" +
+                         $" isPrinterError = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_ERROR)}" +
+                         $" isCutError = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_CUT_ERROR)}" +
+                         $" isPrinterOverheat = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_OVERHEAT)}" +
+                         $" isDeviceBlocked = {_fptr.getParamBool(Constants.LIBFPTR_PARAM_BLOCKED)}" +
+                         $" dateTime = {_fptr.getParamDateTime(Constants.LIBFPTR_PARAM_DATE_TIME)}" +
+                         $" serialNumber = {_fptr.getParamString(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}" +
+                         $" modelName = {_fptr.getParamString(Constants.LIBFPTR_PARAM_MODEL_NAME)}" +
+                         $" firmwareVersion = {_fptr.getParamString(Constants.LIBFPTR_PARAM_UNIT_VERSION)}" +
                          $"--------------------------";
 
             return status;
@@ -403,15 +398,15 @@ namespace AtolDriver
         /// <returns></returns>
         public PrinterStatus GetPrinterStatus()
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-            fptr.queryData();
+            _fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
+            _fptr.queryData();
             return new PrinterStatus()
             {
-                CutError = fptr.getParamBool(Constants.LIBFPTR_PARAM_CUT_ERROR),
-                PrinterOverheat = fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_OVERHEAT),
-                PrinterError = fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_ERROR),
-                PrinterConnectionLost = fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_CONNECTION_LOST),
-                PaperAvailability = fptr.getParamBool(Constants.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)
+                CutError = _fptr.getParamBool(Constants.LIBFPTR_PARAM_CUT_ERROR),
+                PrinterOverheat = _fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_OVERHEAT),
+                PrinterError = _fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_ERROR),
+                PrinterConnectionLost = _fptr.getParamBool(Constants.LIBFPTR_PARAM_PRINTER_CONNECTION_LOST),
+                PaperAvailability = _fptr.getParamBool(Constants.LIBFPTR_PARAM_RECEIPT_PAPER_PRESENT)
             };
         }
 
@@ -426,48 +421,43 @@ namespace AtolDriver
         /// <returns></returns>
         public string GetDocument(int number)
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_RECORDS_TYPE, Constants.LIBFPTR_RT_FN_DOCUMENT_TLVS);
-            fptr.setParam(Constants.LIBFPTR_PARAM_DOCUMENT_NUMBER, number);
-            fptr.beginReadRecords();
-            String recordsID = fptr.getParamString(Constants.LIBFPTR_PARAM_RECORDS_ID);
+            _fptr.setParam(Constants.LIBFPTR_PARAM_RECORDS_TYPE, Constants.LIBFPTR_RT_FN_DOCUMENT_TLVS);
+            _fptr.setParam(Constants.LIBFPTR_PARAM_DOCUMENT_NUMBER, number);
+            _fptr.beginReadRecords();
+            String recordsId = _fptr.getParamString(Constants.LIBFPTR_PARAM_RECORDS_ID);
 
             StringBuilder result = new StringBuilder();
-            while (readNextRecord(fptr, recordsID) == 0)
+            while (ReadNextRecord(_fptr, recordsId) == 0)
             {
-                result.Append(parse(fptr, 0,
-                    fptr.getParamString(Constants.LIBFPTR_PARAM_TAG_NAME),
-                    fptr.getParamByteArray(Constants.LIBFPTR_PARAM_TAG_VALUE),
-                    fptr.getParamInt(Constants.LIBFPTR_PARAM_TAG_NUMBER),
-                    fptr.getParamInt(Constants.LIBFPTR_PARAM_TAG_TYPE)));
+                result.Append(Parse(_fptr, 0,
+                    _fptr.getParamString(Constants.LIBFPTR_PARAM_TAG_NAME),
+                    _fptr.getParamByteArray(Constants.LIBFPTR_PARAM_TAG_VALUE),
+                    _fptr.getParamInt(Constants.LIBFPTR_PARAM_TAG_NUMBER),
+                    _fptr.getParamInt(Constants.LIBFPTR_PARAM_TAG_TYPE)));
             }
 
-            endReadRecords(fptr, recordsID);
+            EndReadRecords(_fptr, recordsId);
             return result.ToString();
         }
         
-        private static int readNextRecord(IFptr fptr, String recordsID)
+        private static int ReadNextRecord(IFptr fptr, String recordsId)
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_RECORDS_ID, recordsID);
+            fptr.setParam(Constants.LIBFPTR_PARAM_RECORDS_ID, recordsId);
             return fptr.readNextRecord();
         }
 
-        private static int endReadRecords(IFptr fptr, String recordsID)
+        private static int EndReadRecords(IFptr fptr, String recordsId)
         {
-            fptr.setParam(Constants.LIBFPTR_PARAM_RECORDS_ID, recordsID);
+            fptr.setParam(Constants.LIBFPTR_PARAM_RECORDS_ID, recordsId);
             return fptr.endReadRecords();
         }
 
-        private static String printable(int offset, String tagName, uint tagNumber, String tagValue, bool newLineBeforeValue, bool newLineAfterValue)
+        private static string Printable(int offset, String tagName, uint tagNumber, String tagValue, bool newLineBeforeValue, bool newLineAfterValue)
         {
-            return String.Format("{0}{1} ({2}): {3}{4}{5}", new StringBuilder().Insert(0, "  ", offset).ToString(),
-                    tagName,
-                    tagNumber,
-                    newLineBeforeValue ? "\n" : "",
-                    tagValue,
-                    newLineAfterValue ? "\n" : "");
+            return  $"{new StringBuilder().Insert(0, "  ", offset).ToString()}{tagName} ({tagNumber}): {(newLineBeforeValue ? "\n" : "")}{tagValue}{(newLineAfterValue ? "\n" : "")}";
         }
 
-        private static String parse(IFptr fptr, int printOffset, String tagName, byte[] tagValue, uint tagNumber, uint tagType)
+        private static string Parse(IFptr fptr, int printOffset, String tagName, byte[] tagValue, uint tagNumber, uint tagType)
         {
             switch ((int)tagType)
             {
@@ -475,36 +465,36 @@ namespace AtolDriver
                 case Constants.LIBFPTR_TAG_TYPE_BYTE:
                 case Constants.LIBFPTR_TAG_TYPE_UINT_16:
                 case Constants.LIBFPTR_TAG_TYPE_UINT_32:
-                    return printable(printOffset, tagName, tagNumber, fptr.getParamInt(Constants.LIBFPTR_PARAM_TAG_VALUE).ToString(), false, true);
+                    return Printable(printOffset, tagName, tagNumber, fptr.getParamInt(Constants.LIBFPTR_PARAM_TAG_VALUE).ToString(), false, true);
                 case Constants.LIBFPTR_TAG_TYPE_VLN:
                 case Constants.LIBFPTR_TAG_TYPE_FVLN:
-                    return printable(printOffset, tagName, tagNumber, fptr.getParamDouble(Constants.LIBFPTR_PARAM_TAG_VALUE).ToString(), false, true);
+                    return Printable(printOffset, tagName, tagNumber, fptr.getParamDouble(Constants.LIBFPTR_PARAM_TAG_VALUE).ToString(CultureInfo.InvariantCulture), false, true);
                 case Constants.LIBFPTR_TAG_TYPE_BOOL:
-                    return printable(printOffset, tagName, tagNumber, fptr.getParamBool(Constants.LIBFPTR_PARAM_TAG_VALUE).ToString(), false, true);
+                    return Printable(printOffset, tagName, tagNumber, fptr.getParamBool(Constants.LIBFPTR_PARAM_TAG_VALUE).ToString(), false, true);
                 case Constants.LIBFPTR_TAG_TYPE_ARRAY:
-                    return printable(printOffset, tagName, tagNumber, BitConverter.ToString(fptr.getParamByteArray(Constants.LIBFPTR_PARAM_TAG_VALUE)), false, true);
+                    return Printable(printOffset, tagName, tagNumber, BitConverter.ToString(fptr.getParamByteArray(Constants.LIBFPTR_PARAM_TAG_VALUE)), false, true);
                 case Constants.LIBFPTR_TAG_TYPE_STRING:
-                    return printable(printOffset, tagName, tagNumber, fptr.getParamString(Constants.LIBFPTR_PARAM_TAG_VALUE), false, true);
+                    return Printable(printOffset, tagName, tagNumber, fptr.getParamString(Constants.LIBFPTR_PARAM_TAG_VALUE), false, true);
                 case Constants.LIBFPTR_TAG_TYPE_UNIX_TIME:
-                    return printable(printOffset, tagName, tagNumber, fptr.getParamDateTime(Constants.LIBFPTR_PARAM_TAG_VALUE).ToString(), false, true);
+                    return Printable(printOffset, tagName, tagNumber, fptr.getParamDateTime(Constants.LIBFPTR_PARAM_TAG_VALUE).ToString(CultureInfo.InvariantCulture), false, true);
                 case Constants.LIBFPTR_TAG_TYPE_STLV:
                     fptr.setParam(Constants.LIBFPTR_PARAM_RECORDS_TYPE, Constants.LIBFPTR_RT_PARSE_COMPLEX_ATTR);
                     fptr.setParam(Constants.LIBFPTR_PARAM_TAG_VALUE, tagValue);
                     fptr.beginReadRecords();
-                    String recordsID = fptr.getParamString(Constants.LIBFPTR_PARAM_RECORDS_ID);
+                    var recordsId = fptr.getParamString(Constants.LIBFPTR_PARAM_RECORDS_ID);
 
-                    StringBuilder result = new StringBuilder();
-                    while (readNextRecord(fptr, recordsID) == 0)
+                    var result = new StringBuilder();
+                    while (ReadNextRecord(fptr, recordsId) == 0)
                     {
-                        result.Append(parse(fptr, printOffset + 1,
+                        result.Append(Parse(fptr, printOffset + 1,
                                 fptr.getParamString(Constants.LIBFPTR_PARAM_TAG_NAME),
                                 fptr.getParamByteArray(Constants.LIBFPTR_PARAM_TAG_VALUE),
                                 fptr.getParamInt(Constants.LIBFPTR_PARAM_TAG_NUMBER),
                                 fptr.getParamInt(Constants.LIBFPTR_PARAM_TAG_TYPE)));
                     }
 
-                    endReadRecords(fptr, recordsID);
-                    return printable(printOffset, tagName, tagNumber, result.ToString(), true, false);
+                    EndReadRecords(fptr, recordsId);
+                    return Printable(printOffset, tagName, tagNumber, result.ToString(), true, false);
                 default:
                     return "";
             }
@@ -581,11 +571,11 @@ namespace AtolDriver
 
         private static string GetPaymentTypeEnum(PaymentTypeEnum paymentTypeEnum) => paymentTypeEnum switch
         {
-            PaymentTypeEnum.cash => "cash",
-            PaymentTypeEnum.credit => "credit",
-            PaymentTypeEnum.electronically => "electronically",
-            PaymentTypeEnum.other => "other",
-            PaymentTypeEnum.prepaid => "prepaid",
+            PaymentTypeEnum.Cash => "cash",
+            PaymentTypeEnum.Credit => "credit",
+            PaymentTypeEnum.Electronically => "electronically",
+            PaymentTypeEnum.Other => "other",
+            PaymentTypeEnum.Prepaid => "prepaid",
             _ => ""
         };
 
@@ -593,37 +583,6 @@ namespace AtolDriver
 
         #endregion
         
-        
-        
-
-        
-        
-        
-        
-        
-        
-        
-
-       
-        
-        
-        
-        
-
- 
-        
-        
-
-
-        
-       
-        
-        
-        
-
-
-
-
     }
 
     #region Enum
@@ -633,23 +592,23 @@ namespace AtolDriver
         /// <summary>
         /// наличными
         /// </summary>
-        cash,
+        Cash,
         /// <summary>
         /// безналичными
         /// </summary>
-        electronically,
+        Electronically,
         /// <summary>
         /// предварительная оплата (аванс)
         /// </summary>
-        prepaid,
+        Prepaid,
         /// <summary>
         /// последующая оплата (кредит)
         /// </summary>
-        credit,
+        Credit,
         /// <summary>
         ///  иная форма оплаты (встречное предоставление)
         /// </summary>
-        other,
+        Other,
     }
     public enum TaxTypeEnum
     {

@@ -385,16 +385,16 @@ namespace FreeKassa.KKT
             string taxesType;
             switch (payModel.PaymentType)
             {
-                case PaymentTypeEnum.cash:
+                case PaymentTypeEnum.Cash:
                     type = "НАЛИЧНЫМИ";
                     break;
-                case PaymentTypeEnum.electronically:
+                case PaymentTypeEnum.Electronically:
                     type = "БЕЗНАЛИЧНЫМИ";
                     break;
-                case PaymentTypeEnum.credit:
+                case PaymentTypeEnum.Credit:
                     type = "КРЕДИТ";
                     break;
-                case PaymentTypeEnum.prepaid:
+                case PaymentTypeEnum.Prepaid:
                     type = "ПРЕДОПЛАТА";
                     break;
                 default: throw new ArgumentOutOfRangeException();

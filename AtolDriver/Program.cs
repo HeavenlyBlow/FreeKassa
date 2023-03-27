@@ -26,7 +26,7 @@ namespace AtolDriver
             // printer.PrintStatus();
             // printer.AddPosition("Ручка", 20, 1, MeasurementUnitEnum.Piece, PaymentObjectEnum.Commodity, TaxTypeEnum.Vat20);
             // printer.PrintStatus();
-            printer.Pay(PaymentTypeEnum.cash, 35);
+            printer.Pay(PaymentTypeEnum.Cash, 35);
             // printer.Pay();
             printer.CloseReceipt();
             // printer.PrintStatus();
