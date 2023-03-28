@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -11,7 +10,6 @@ using FreeKassa.Extensions.KKTExceptions;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Utils;
-using QRCoder;
 
 namespace FreeKassa.KKT
 {
@@ -23,7 +21,7 @@ namespace FreeKassa.KKT
         private Model.KKT _kktModel;
         private AtolInterface _atolInterface;
         private Timer _timer;
-        private object locker = new();
+        private object _locker = new();
         private bool _manualShiftManagement;
         private readonly PrinterManager _printerManager;
         private readonly SimpleLogger _logger;
@@ -86,7 +84,7 @@ namespace FreeKassa.KKT
 
         private void ShiftsControl()
         {
-            lock (locker)
+            lock (_locker)
             {
                 if (_kktModel.Shift.WorkKWithBreaks.On == 1) WorkKWithBreaksShiftsControl();
                 else NonStopWorkShiftsControl();
@@ -197,8 +195,8 @@ namespace FreeKassa.KKT
         }
         private void StartTimer()
         {
-            int num = 0; 
-            TimerCallback tm = new TimerCallback(CheckTime); 
+            var num = 0; 
+            var tm = new TimerCallback(CheckTime); 
             _timer = new Timer(tm,num, 11000, 50000);
         }
         private void CheckTime(object source)
@@ -233,7 +231,9 @@ namespace FreeKassa.KKT
                 product.Quantity,
                 product.MeasurementUnit,
                 product.PaymentObject,
-                product.TaxType);
+                product.TaxType,
+                product.Ims);
+            
         }
         public void AddPay(PayModel pay)
         {
@@ -277,10 +277,10 @@ namespace FreeKassa.KKT
         {
            var company = _atolInterface.GetCompanyInfo();
            var reportOfdExchangeStatus = _atolInterface.CountdownStatus();
-           var FnStatistic = _atolInterface.GetFnStatus();
+           var fnStatistic = _atolInterface.GetFnStatus();
            var fnTotal = _atolInterface.GetShiftsTotal();
            
-           var errors = reportOfdExchangeStatus.Errors;
+           var errors = reportOfdExchangeStatus!.Errors;
            var ofd = reportOfdExchangeStatus.Status;
            var fqQuantityCounters = reportOfdExchangeStatus.FiscalParams.fnQuantityCounters;
            var fn = reportOfdExchangeStatus.FiscalParams.fnTotals;
@@ -294,12 +294,12 @@ namespace FreeKassa.KKT
                fqQuantityCounters.sellReturn,
            };
 
-           var fnReceipts = fnTotal.ShiftTotals.Receipts;
+           var fnReceipts = fnTotal!.ShiftTotals.Receipts;
            
 
            return new CloseShiftsFormModel()
            {
-               CompanyName = company.Name,
+               CompanyName = company!.Name,
                Address = company.Address,
                CashierName = _kktModel.OperatorName,
                
@@ -343,9 +343,9 @@ namespace FreeKassa.KKT
                FiscalDocumentNumber = info.FiscalParams.FiscalDocumentNumber.ToString(),
                FiscalFeatureDocument = info.FiscalParams.FiscalDocumentSign,
                DontConnectOfD = errors.ofd.description,
-               NotTransmittedFD = FnStatistic.FnStatus.Warnings.OfdTimeout.ToString(),
+               NotTransmittedFD = fnStatistic!.FnStatus.Warnings.OfdTimeout.ToString(),
                NotTransmittedFrom = errors.lastSuccessConnectionDateTime.ToString(),
-               KeyResource = FnStatistic.FnStatus.Warnings.ResourceExhausted.ToString(),
+               KeyResource = fnStatistic.FnStatus.Warnings.ResourceExhausted.ToString(),
            };
         }
         private OpenShiftsFormModel DataAboutOpeningShift(OpenShiftInfo info)
@@ -492,12 +492,8 @@ namespace FreeKassa.KKT
 
         #endregion
         
-        
         #endregion
         
-        
-        
- 
         
         //TODO Может быть ошибка из-за того что выполняется другая операция с ккт!
   

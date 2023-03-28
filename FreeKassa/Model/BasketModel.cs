@@ -10,7 +10,6 @@ namespace FreeKassa.Model
         public MeasurementUnitEnum MeasurementUnit { get; set; }
         public PaymentObjectEnum PaymentObject { get; set; }
         public TaxTypeEnum TaxType { get; set; }
-
         public string TaxTypeString
         {
             get
@@ -35,7 +34,6 @@ namespace FreeKassa.Model
                 return taxType;
             }
         }
-
         public double QuantityVat
         {
             get
@@ -55,5 +53,7 @@ namespace FreeKassa.Model
                 return (((Cost * Quantity) * tax) / 100);
             }
         }
-        }
+        public string Ims { get; set; }
+        
+    }
 }
