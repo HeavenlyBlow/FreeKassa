@@ -1,18 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using WebSocketSharp;
-using System.Text;
 using System.Threading.Tasks;
-using CashCode.Net;
-using FreeKassa.Extensions;
-using FreeKassa.Model;
 using FreeKassa.Utils;
+using WebSocketSharp;
 
-namespace FreeKassa
+namespace FreeKassa.Payment.Cash
 {
-    public class CashValidator
+    public class CashValidator: PaymentBase
     {
         
         private string _totalCost;

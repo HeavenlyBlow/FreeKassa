@@ -25,5 +25,8 @@
   "CashValidator": {
     "SerialPort": "COM7",
     "BaundRate" : 9600
+  },
+  "Sberbank": {
+    "Directory": "C:\\WinSber"
   }
 }

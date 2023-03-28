@@ -14,6 +14,8 @@ using FreeKassa.KKT;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Model.PrinitngDocumensModel;
+using FreeKassa.Payment.Cash;
+using FreeKassa.Payment.Pinpad.Sberbank;
 using FreeKassa.Utils;
 
 namespace FreeKassa
@@ -140,7 +142,7 @@ namespace FreeKassa
             {
                 case PaymentType.Sberbank:
 
-                    var sber = new SperbankOplata(_simpleLogger);
+                    var sber = new SperbankOplata(_simpleLogger, _settings.Sberbank);
                     _paymentBase = sber;
                     sber.Successfully += PaymentOnSuccessfully;
                     sber.Error += PaymentOnError;

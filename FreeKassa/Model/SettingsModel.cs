@@ -7,8 +7,14 @@ namespace FreeKassa.Model
         public KKT KKT { get; set; }
         public Printer Printer { get; set; }
         public CashValidatorModel CashValidator { get; set; }
+        public Sberbank Sberbank { get; set; }
     }
-    
+
+    public class Sberbank
+    {
+        public string Directory { get; set; }
+    }
+
     public class CashValidatorModel
     {
         public string SerialPort { get; set; }
