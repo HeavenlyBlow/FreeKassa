@@ -1,0 +1,13 @@
+<configuration>
+   <runtime>
+      <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+       <dependentAssembly>
+         <assemblyIdentity name="DualConnector"
+                           publicKeyToken="c5588caae218f0db"
+                           culture="neutral"/>
+         <bindingRedirect oldVersion="1.2.0.5-1.3.9.0"
+                          newVersion="1.3.9.1"/>
+       </dependentAssembly>
+      </assemblyBinding>
+   </runtime>
+</configuration>

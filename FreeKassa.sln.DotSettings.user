@@ -1,5 +1,12 @@
 ﻿<wpf:ResourceDictionary xml:space="preserve" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:s="clr-namespace:System;assembly=mscorlib" xmlns:ss="urn:shemas-jetbrains-com:settings-storage-xaml" xmlns:wpf="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
 	<s:Boolean x:Key="/Default/AddReferences/RecentPaths/=C_003A_005CUsers_005Candrey_005CRiderProjects_005CFreeKassa_005CAtolDriver_005CDLL_005CNET5_005CAtol_002EDrivers10_002EFptr_002Edll/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/AddReferences/RecentPaths/=C_003A_005CUsers_005Candrey_005CRiderProjects_005CFreeKassa_005CFreeKassa_005CPayment_005CPinpad_005CInpas_005CDLL_005CDualConnector_002Edll/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/AddReferences/RecentPaths/=C_003A_005CUsers_005Candrey_005CRiderProjects_005CFreeKassa_005CFreeKassa_005CPayment_005CPinpad_005CInpas_005CDLL_005Clibeay32_002Edll/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/AddReferences/RecentPaths/=C_003A_005CUsers_005Candrey_005CRiderProjects_005CFreeKassa_005CFreeKassa_005CPayment_005CPinpad_005CInpas_005CDLL_005CManagedOpenSsl_002Edll/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/AddReferences/RecentPaths/=C_003A_005CUsers_005Candrey_005CRiderProjects_005CFreeKassa_005CFreeKassa_005CPayment_005CPinpad_005CInpas_005CDLL_005Cpolicy_002E1_002E2_002EDualConnector_002Edll/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/AddReferences/RecentPaths/=C_003A_005CUsers_005Candrey_005CRiderProjects_005CFreeKassa_005CFreeKassa_005CPayment_005CPinpad_005CInpas_005CDLL_005Cpolicy_002E1_002E2_002EManagedOpenSsl_002Edll/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/AddReferences/RecentPaths/=C_003A_005CUsers_005Candrey_005CRiderProjects_005CFreeKassa_005CFreeKassa_005CPayment_005CPinpad_005CInpas_005CDLL_005Cpolicy_002E1_002E3_002EDualConnector_002Edll/@EntryIndexedValue">True</s:Boolean>
+	<s:Boolean x:Key="/Default/AddReferences/RecentPaths/=C_003A_005CUsers_005Candrey_005CRiderProjects_005CFreeKassa_005CFreeKassa_005CPayment_005CPinpad_005CInpas_005CDLL_005Cssleay32_002Edll/@EntryIndexedValue">True</s:Boolean>
 	<s:String x:Key="/Default/CodeInspection/PencilsConfiguration/ActualSeverity/@EntryValue">INFO</s:String>
 	<s:String x:Key="/Default/Environment/AssemblyExplorer/XmlDocument/@EntryValue">&lt;AssemblyExplorer&gt;&#xD;
   &lt;Assembly Path="C:\Users\andrey\.nuget\packages\system.drawing.common\5.0.3\ref\netcoreapp3.0\System.Drawing.Common.dll" /&gt;&#xD;

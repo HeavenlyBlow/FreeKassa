@@ -10,6 +10,8 @@ using ESCPOS_NET.Utils;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Model.PrinitngDocumensModel;
+using FreeKassa.Payment.Pinpad.Inpas;
+using FreeKassa.Payment.Pinpad.Sberbank;
 using FreeKassa.Utils;
 using Newtonsoft.Json.Linq;
 
@@ -23,19 +25,8 @@ namespace FreeKassa
         {
 
 
-            var a = "adsadasd";
-            a += "dsadsadads";
-
-            var tr = true;
             
-            while (tr)
-            {
-                var b = false;
-                if (2 == 2) continue;
 
-                b = true;
-
-            }
 
 
 
