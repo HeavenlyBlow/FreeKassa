@@ -16,7 +16,8 @@
 
 <h2>Быстрый старт</h2>
 <h3>1. Настройте файл configKassa.json
-```
+
+``` json
 {
   "KKT": {
     "PrinterManagement": 0,
@@ -50,6 +51,7 @@
   }
 }
 ```
+
 <h4>Описание полей:
 <ul>
     <li>PrinterManagement - отвечает за переключение режимов работы с принетором где 0 - ручное управление, 1 - автоматическое управление принтером ККТ</li>
@@ -59,23 +61,28 @@
     <li>Shift - По поддерживает 2 режима работы со сменами. Первый безприровный, второй интервальный </li>
 </ul>
 
-
+___
 <h3>2. Создайте экземпляр класса и подпишитесь на необходимые события</h3>
-```
+
+```csharp
 var kassa = new KassaManager();
 kassa.SuccessfullyReceipt += (sender, args) => Logger.Info("Фискализация прошла успешно");
 kassa.Error += (sender, args) => Logger.Info("Ошибка фискализации");
 kassa.StartKassa();
 ```
+___
 <h3>3. Запустите процесс оплаты предварительно подписавшись на его события (при необходимости) </h3>
-```
+
+```csharp
 kassa.SuccessfullyPayment += (sender, args) => Logger.Info("Оплата получена");
 kassa.ErrorPayment += (sender, args) => Logger.Info("Ошибка оплаты");
-kassa.StartPayment(PaymentType.Sberbank, 1000);
+kassa.StartPayment(PaymentType.Sberbank, 1000);          
 ```
+___
 <h3>4.Запустите процесс фискализации чека </h3>
-```
-          k.RegisterReceipt( new ReceiptModel()
+
+```csharp
+          kassa.RegisterReceipt( new ReceiptModel()
                 {
                     isElectron = true,
                     TaxationType = TaxationTypeEnum.Osn,
@@ -100,7 +107,7 @@ kassa.StartPayment(PaymentType.Sberbank, 1000);
                 },
                 new ClientInfo()
                 {
-                    EmailOrPhone = "+79991891088"
+                    EmailOrPhone = "+79911231088"
                 }
             );
 ```
@@ -118,10 +125,11 @@ kassa.StartPayment(PaymentType.Sberbank, 1000);
 ```
 
 Обратите внимание что для каждого типа настроект ККТ необходимы свои поля. Например для продаж в интернете необходимо указывать номер телефона. В остальных случаях не трубется по этому я рекоменуд перед установлкой на клиентские машины моделировать их насройки в тестовом ККТ и через тест драйвер атол точно выяснить какие параметры необходимо передавать для фискализации.
-
+___
 <h2>Настройка форм печати</h2>
 В по реализованы формы фискальныех доументов, к ним относятся чеки открытия, закрытия и фискальные чеки. Данные формы используются для привязки моделей к полям. Вы можете самостоятельно изменять эти формы, добавляя наобходимы элементы.
-```
+
+``` csharp
 public static byte[] GetOpenShiftsForm(EPSON e, OpenShiftsFormModel model)
         {
             return ByteSplicer.Combine(
@@ -150,9 +158,11 @@ public static byte[] GetOpenShiftsForm(EPSON e, OpenShiftsFormModel model)
 Для получения массива байт для печати применяется статический класс ByteSplicer.Combine из библиотеки EPSON
 
 Данная библиотека имеет большой функционал для настройки шрифтов их расположения и отступов. Как вы могли заметить в коде присутсвует:
-```
+
+```csharp
 public static string ArrangeWords(string leftString, string rightString, Style eStyle)
 ```
+
 Данный метод сделан для того чтобы в одной строке по разным сторонам поместились 2 строки. Данный метод работает только с FontB. 
 Для добавления другого шрифта необходимо узнать количество знаков которые поещаются на чековую ленту.
 
