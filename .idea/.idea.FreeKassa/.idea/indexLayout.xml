@@ -4,6 +4,7 @@
     <attachedFolders />
     <explicitIncludes>
       <Path>BillValidatorWebSoket</Path>
+      <Path>README.md</Path>
     </explicitIncludes>
     <explicitExcludes />
   </component>
