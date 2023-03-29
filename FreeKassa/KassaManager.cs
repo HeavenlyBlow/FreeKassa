@@ -9,7 +9,6 @@ using ESCPOS_NET.Emitters;
 using FreeKassa.Enum;
 using FreeKassa.Extensions.KassaManagerExceptions;
 using FreeKassa.Extensions.KKTExceptions;
-using FreeKassa.FormForPrinting.UsersDocument;
 using FreeKassa.KKT;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;

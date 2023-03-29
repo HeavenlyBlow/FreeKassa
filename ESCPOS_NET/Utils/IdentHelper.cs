@@ -5,6 +5,13 @@ namespace ESCPOS_NET.ConsoleTest
 {
     public class IdentHelper
     {
+        /// <summary>
+        /// Размещение строк в разных концах строки
+        /// </summary>
+        /// <param name="leftString">левая строка</param>
+        /// <param name="rightString">правая строка</param>
+        /// <param name="eStyle">тип шрифта</param>
+        /// <returns></returns>
         public static string ArrangeWords(string leftString, string rightString, Style eStyle)
         {
             var indent = (int)eStyle;

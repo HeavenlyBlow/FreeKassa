@@ -184,34 +184,34 @@ namespace FreeKassa
             //     
             //     Console.ReadLine();
             //
-            //     // k.RegisterReceipt( new ReceiptModel()
-            //     //     {
-            //     //         isElectron = false,
-            //     //         TaxationType = TaxationTypeEnum.Osn,
-            //     //         TypeReceipt = TypeReceipt.Sell
-            //     //     }, 
-            //     //     new List<BasketModel>() 
-            //     //     { 
-            //     //         new BasketModel() 
-            //     //         {
-            //     //             Cost = 10,
-            //     //             MeasurementUnit = MeasurementUnitEnum.Piece,
-            //     //             Name = "Фотографии",
-            //     //             PaymentObject = PaymentObjectEnum.Service,
-            //     //             Quantity = 5,
-            //     //             TaxType = TaxTypeEnum.Vat10
-            //     //         }
-            //     //     },
-            //     //     new PayModel()
-            //     //     {
-            //     //         PaymentType = PaymentTypeEnum.cash,
-            //     //         Sum = 50
-            //     //     },
-            //     //     new ClientInfo()
-            //     //     {
-            //     //         EmailOrPhone = "+79991891088"
-            //     //     }
-            //     // );
+            // k.RegisterReceipt( new ReceiptModel()
+            //     {
+            //         isElectron = false,
+            //         TaxationType = TaxationTypeEnum.Osn,
+            //         TypeReceipt = TypeReceipt.Sell
+            //     }, 
+            //     new List<BasketModel>() 
+            //     { 
+            //         new BasketModel() 
+            //         {
+            //             Cost = 10,
+            //             MeasurementUnit = MeasurementUnitEnum.Piece,
+            //             Name = "Фотографии",
+            //             PaymentObject = PaymentObjectEnum.Service,
+            //             Quantity = 5,
+            //             TaxType = TaxTypeEnum.Vat10
+            //         }
+            //     },
+            //     new PayModel()
+            //     {
+            //         PaymentType = PaymentTypeEnum.cash,
+            //         Sum = 50
+            //     },
+            //     new ClientInfo()
+            //     {
+            //         EmailOrPhone = "+79991891088"
+            //     }
+            // );
             //     
             //     Console.ReadLine();
             // }

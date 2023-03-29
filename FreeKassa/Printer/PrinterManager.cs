@@ -2,10 +2,10 @@
 using System.Threading.Tasks;
 using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
-using FreeKassa.FormForPrinting.UsersDocument;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Model.PrinitngDocumensModel;
 using FreeKassa.Printer.FormForPrinting.FiscalDocuments;
+using FreeKassa.Printer.FormForPrinting.UsersDocument;
 
 namespace FreeKassa.Printer
 {
