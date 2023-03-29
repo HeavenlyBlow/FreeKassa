@@ -9,6 +9,7 @@ using FreeKassa.Extensions.KassaManagerExceptions;
 using FreeKassa.Extensions.KKTExceptions;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
+using FreeKassa.Printer;
 using FreeKassa.Utils;
 
 namespace FreeKassa.KKT

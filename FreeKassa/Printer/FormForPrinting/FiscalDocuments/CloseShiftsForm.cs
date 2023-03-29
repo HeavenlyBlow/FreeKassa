@@ -1,12 +1,14 @@
 ﻿using ESCPOS_NET.ConsoleTest;
 using ESCPOS_NET.Emitters;
 using ESCPOS_NET.Utilities;
+using FreeKassa.FormForPrinting;
 using FreeKassa.Model.FiscalDocumentsModel;
 
-namespace FreeKassa.Printer.Templates
+namespace FreeKassa.Printer.FormForPrinting.FiscalDocuments
 {
-    public class CloseShiftsForm
+    public static class CloseShiftsForm
     {
+        
         public static byte[] GetCloseShiftsForm(EPSON e, CloseShiftsFormModel model)
         {
             return ByteSplicer.Combine(
@@ -93,6 +95,5 @@ namespace FreeKassa.Printer.Templates
                 e.PrintLine("")
             );
         }
-        
     }
 }

@@ -9,11 +9,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
 {
     public class SberbankPayment: PaymentBase
    {
-       // public new delegate void Payment();
-       //  public new event Payment Successfully;
-       //  public new event Payment Error;
-        
-        private readonly SimpleLogger _logger;
+       private readonly SimpleLogger _logger;
         private readonly Model.Sberbank _settings;
         
         public SberbankPayment(SimpleLogger logger, Model.Sberbank settings)
@@ -29,9 +25,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
         
         private void MakePayment(long amount)
         {
-            //TODO это для теста
-            //return true;
-            _logger.Info("Запуск пинпада");
+            _logger.Info("Запуск оплаты Сбербанк");
             var directorySber = _settings.Directory;
             Process.Start($@"{directorySber}\loadparm.exe", "1 " + amount);
             var allFilesLog = Directory.GetFiles(directorySber, "*.log").Where(f => f.Contains("sbkernel") && f.EndsWith(".log"));
@@ -92,7 +86,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
         
         private bool RestartShift()
         {
-            _logger.Info("Запуск пинпада");
+            _logger.Info("Запуск пересменки сбербанк");
             var directorySber = _settings.Directory;
             Process.Start(@$"{directorySber}\loadparm.exe", "7");
             var allFilesLog = Directory.GetFiles(directorySber, "*.log").Where(f => f.Contains("sbkernel") && f.EndsWith(".log"));

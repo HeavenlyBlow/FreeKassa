@@ -1,18 +1,13 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
-using FreeKassa.FormForPrinting;
-using FreeKassa.FormForPrinting.FiscalDocuments;
 using FreeKassa.FormForPrinting.UsersDocument;
-using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Model.PrinitngDocumensModel;
-using FreeKassa.Printer.Templates;
-using FreeKassa.Utils;
+using FreeKassa.Printer.FormForPrinting.FiscalDocuments;
 
-namespace FreeKassa
+namespace FreeKassa.Printer
 {
     public class PrinterManager
     {
@@ -49,7 +44,6 @@ namespace FreeKassa
                     SendToPrint(CloseShiftsForm.GetCloseShiftsForm(_vkp80ii, closeShiftsFormModel));
                     break;
                 case ChequeFormModel chequeFormModel:
-                    // SendToPrint(new ChequeForm().GetByteForm(chequeFormModel));
                     SendToPrint(ChequeForm.GetChequeForm(_vkp80ii, chequeFormModel));
                     break;
             }
@@ -58,6 +52,10 @@ namespace FreeKassa
         public void Print(IEnumerable<TicketModel> models)
         {
             SendToPrint(TiсketForm.GetTicketForm(_vkp80ii,models));
+        }
+        public void Print(byte[] document)
+        {
+            SendToPrint(document);
         }
     }
 }

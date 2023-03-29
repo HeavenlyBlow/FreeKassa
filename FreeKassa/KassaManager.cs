@@ -17,6 +17,7 @@ using FreeKassa.Model.PrinitngDocumensModel;
 using FreeKassa.Payment;
 using FreeKassa.Payment.Cash;
 using FreeKassa.Payment.Pinpad.Sberbank;
+using FreeKassa.Printer;
 using FreeKassa.Utils;
 
 namespace FreeKassa
@@ -43,6 +44,11 @@ namespace FreeKassa
         public KassaManager()
         {
             _simpleLogger = new SimpleLogger();
+            _settings = ConfigHelper.GetSettings();
+            _simpleLogger.Info("Касса запускается");
+            if (_settings != null) return;
+            _simpleLogger.Fatal("SettingsExceptions: Не удалось получить настройки кассы");
+            throw new SettingsExceptions("Не удалось получить настройки кассы");
         }
 
         #endregion
@@ -71,16 +77,12 @@ namespace FreeKassa
 
         #region Base
 
+        /// <summary>
+        /// Запуск ККТ и притера
+        /// </summary>
+        /// <returns></returns>
         public bool StartKassa()
         {
-            _simpleLogger.Info("Касса запускается");
-            _settings = ConfigHelper.GetSettings();
-            if (_settings == null)
-            {
-                _simpleLogger.Fatal("SettingsExceptions: Не удалось получить настройки кассы");
-                throw new SettingsExceptions("Не удалось получить настройки кассы");
-            }
-            
             if (_settings.KKT.PrinterManagement == 0)
             {
                 _vkp80Ii = new EPSON();
@@ -185,7 +187,10 @@ namespace FreeKassa
         #endregion
 
         #region Printer
-
+        /// <summary>
+        /// Готовность принетра к печати
+        /// </summary>
+        /// <returns></returns>
         public bool PrinterReady()
         {
             if (_settings.KKT.PrinterManagement == 1)
@@ -208,6 +213,10 @@ namespace FreeKassa
 
             return true;
         }
+        /// <summary>
+        /// Распечатать чек
+        /// </summary>
+        /// <param name="chequeFormModel">Модель чека</param>
         public void PrintCheque(ChequeFormModel chequeFormModel)
         {
             if (_printerManager == null)

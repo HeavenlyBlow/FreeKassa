@@ -3,7 +3,7 @@ using ESCPOS_NET.Emitters;
 using ESCPOS_NET.Utilities;
 using FreeKassa.Model.FiscalDocumentsModel;
 
-namespace FreeKassa.FormForPrinting.FiscalDocuments
+namespace FreeKassa.Printer.FormForPrinting.FiscalDocuments
 {
     public static class OpenShiftsForm
     {

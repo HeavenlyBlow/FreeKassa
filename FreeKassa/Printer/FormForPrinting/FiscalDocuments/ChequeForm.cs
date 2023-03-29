@@ -4,9 +4,8 @@ using ESCPOS_NET.Emitters;
 using ESCPOS_NET.Utilities;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
-using FreeKassa.Utils;
 
-namespace FreeKassa.FormForPrinting.FiscalDocuments
+namespace FreeKassa.Printer.FormForPrinting.FiscalDocuments
 {
     public static class ChequeForm
     {
