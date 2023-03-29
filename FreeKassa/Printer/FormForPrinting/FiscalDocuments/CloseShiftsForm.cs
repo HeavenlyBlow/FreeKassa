@@ -1,7 +1,6 @@
 ﻿using ESCPOS_NET.ConsoleTest;
 using ESCPOS_NET.Emitters;
 using ESCPOS_NET.Utilities;
-using FreeKassa.FormForPrinting;
 using FreeKassa.Model.FiscalDocumentsModel;
 
 namespace FreeKassa.Printer.FormForPrinting.FiscalDocuments
