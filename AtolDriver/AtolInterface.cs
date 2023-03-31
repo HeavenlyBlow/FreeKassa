@@ -97,7 +97,7 @@ namespace AtolDriver
         public void OpenReceipt(bool isElectronicReceipt ,TypeReceipt typeReceiptEnum ,
             TaxationTypeEnum taxationTypeEnum, ClientInfo? client = null, bool isMarked = false)
         {
-            _receipt = new Receipt
+            _receipt = new ReceiptBase()
             {
                 Type = GetTypeReceipt(typeReceiptEnum),
                 TaxationType = GetTaxType(taxationTypeEnum),
@@ -110,7 +110,7 @@ namespace AtolDriver
 
             if (isMarked)
             {
-                ((MarkedReceipt)_receipt).ValidateMarkingCodes = true;
+                _receipt.ValidateMarkingCodes = true;
             }
         }
 
@@ -138,8 +138,10 @@ namespace AtolDriver
                 Amount = price * quantity,
                 Tax = new Tax { Type = GetTaxTypeEnum(taxationTypeEnum) }
             };
+
+
             
-            if (((MarkedReceipt)_receipt).ValidateMarkingCodes && !ims.Equals(""))
+            if (_receipt.ValidateMarkingCodes && !ims.Equals(""))
             {
                 item.ImcParams = new ImcParams()
                 {

@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace AtolDriver.BaseClass;
 
-public abstract class ReceiptBase
+public class ReceiptBase
 {
     [JsonProperty("type")]
     public string Type{ get; set; }
@@ -26,4 +26,7 @@ public abstract class ReceiptBase
         
     [JsonProperty("electronically")]
     public bool Electronic { get; set; }
+    
+    [JsonProperty("validateMarkingCodes")]
+    public bool ValidateMarkingCodes { get; set; }
 }

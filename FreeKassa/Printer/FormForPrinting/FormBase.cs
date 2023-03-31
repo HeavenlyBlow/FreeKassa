@@ -2,7 +2,7 @@
 
 namespace FreeKassa.Printer.FormForPrinting
 {
-    public abstract class Form
+    public abstract class FormBase
     {
 
         public byte[] Data;
