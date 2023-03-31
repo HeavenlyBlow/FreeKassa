@@ -4,6 +4,7 @@ using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Model.PrinitngDocumensModel;
+using FreeKassa.Printer.FormForPrinting;
 using FreeKassa.Printer.FormForPrinting.FiscalDocuments;
 using FreeKassa.Printer.FormForPrinting.UsersDocument;
 
@@ -53,9 +54,9 @@ namespace FreeKassa.Printer
         {
             SendToPrint(TiсketForm.GetTicketForm(_vkp80ii,models));
         }
-        public void Print(byte[] document)
+        public void Print(Form document)
         {
-            SendToPrint(document);
+            SendToPrint(document.Data);
         }
     }
 }

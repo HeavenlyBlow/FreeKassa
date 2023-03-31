@@ -2,14 +2,16 @@
 
 namespace FreeKassa.Printer.FormForPrinting
 {
-    public interface IForm
+    public abstract class Form
     {
+
+        public byte[] Data;
         /// <summary>
         /// Внутри метода необходимо релизовать метод ByteSplicer.Combine для возрващнеия массива байт для печати
         /// </summary>
         /// <param name="e">Объект принтера: можно создать новый</param>
         /// <param name="obj">Модель данных</param>
         /// <returns></returns>
-        public byte[] GetFormData(EPSON e, object obj);
+        public abstract byte[] GetFormData(EPSON e, object obj);
     }
 }
