@@ -5,6 +5,8 @@ using System.Linq;
 using System.Threading;
 using AtolDriver;
 using AtolDriver.Models;
+using AtolDriver.Models.AnswerModel;
+using AtolDriver.Models.RequestModel;
 using FreeKassa.Extensions.KassaManagerExceptions;
 using FreeKassa.Extensions.KKTExceptions;
 using FreeKassa.Model;
@@ -283,9 +285,9 @@ namespace FreeKassa.KKT
            
            var errors = reportOfdExchangeStatus!.Errors;
            var ofd = reportOfdExchangeStatus.Status;
-           var fqQuantityCounters = reportOfdExchangeStatus.FiscalParams.fnQuantityCounters;
-           var fn = reportOfdExchangeStatus.FiscalParams.fnTotals;
-           var fisqalParams = reportOfdExchangeStatus.FiscalParams;
+           var fqQuantityCounters = reportOfdExchangeStatus.FiscalParamsBase.fnQuantityCounters;
+           var fn = reportOfdExchangeStatus.FiscalParamsBase.fnTotals;
+           var fisqalParams = reportOfdExchangeStatus.FiscalParamsBase;
            
            var list = new List<CountBase>()
            {
@@ -336,13 +338,13 @@ namespace FreeKassa.KKT
                TurnoverVat0FnResult = fn.buy.vat0Sum.ToString(),
                TurnoverNoVatFnResult = fn.buy.vatNoSum.ToString(),
                
-               DateTime = info.FiscalParams.FiscalDocumentDateTime.ToString(),
-               ShiftNumber = info.FiscalParams.ShiftNumber.ToString(),
+               DateTime = info.FiscalParamsBase.FiscalDocumentDateTime.ToString(),
+               ShiftNumber = info.FiscalParamsBase.ShiftNumber.ToString(),
                RegisterNumberKKT = fisqalParams.RegistrationNumber,
                Inn = company.Vatin,
-               FiscalStorageRegisterNumber = info.FiscalParams.FnNumber,
-               FiscalDocumentNumber = info.FiscalParams.FiscalDocumentNumber.ToString(),
-               FiscalFeatureDocument = info.FiscalParams.FiscalDocumentSign,
+               FiscalStorageRegisterNumber = info.FiscalParamsBase.FnNumber,
+               FiscalDocumentNumber = info.FiscalParamsBase.FiscalDocumentNumber.ToString(),
+               FiscalFeatureDocument = info.FiscalParamsBase.FiscalDocumentSign,
                DontConnectOfD = errors.ofd.description,
                NotTransmittedFD = fnStatistic!.FnStatus.Warnings.OfdTimeout.ToString(),
                NotTransmittedFrom = errors.lastSuccessConnectionDateTime.ToString(),
@@ -364,7 +366,7 @@ namespace FreeKassa.KKT
                 CashierName = _kktModel.OperatorName,
                 CompanyName = companyInfo.Name,
                 FiscalStorageRegisterNumber = info.FnNumber,
-                DateTime = info.FiscalDocumentDateTime,
+                DateTime = info.FiscalDocumentDateTime.ToString("g"),
                 Inn = companyInfo.Vatin,
                 RegisterNumberKKT = info.RegistrationNumber,
                 FiscalDocumentNumber = info.FiscalDocumentNumber.ToString(),

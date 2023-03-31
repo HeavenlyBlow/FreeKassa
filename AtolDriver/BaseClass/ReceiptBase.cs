@@ -1,9 +1,10 @@
 ﻿using AtolDriver.Models;
+using AtolDriver.Models.RequestModel;
 using Newtonsoft.Json;
 
-namespace AtolDriver.Interface;
+namespace AtolDriver.BaseClass;
 
-public interface IReceipt
+public abstract class ReceiptBase
 {
     [JsonProperty("type")]
     public string Type{ get; set; }

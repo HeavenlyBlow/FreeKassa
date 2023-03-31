@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace AtolDriver.Models
+namespace AtolDriver.Models.RequestModel
 {
     public class Payments
     {

@@ -1,13 +1,12 @@
-﻿using System;
-using AtolDriver.Interface;
+﻿using AtolDriver.BaseClass;
 using Newtonsoft.Json;
 
-namespace AtolDriver.Models;
+namespace AtolDriver.Models.AnswerModel;
 
 public class CountdownStatusInfo
 {
     [JsonProperty("fiscalParams")]
-    public FiscalParams FiscalParams { get; set; }
+    public FiscalParamsBase FiscalParamsBase { get; set; }
     [JsonProperty("errors")]
     public Errors Errors { get; set; }
     [JsonProperty("status")]
@@ -71,24 +70,16 @@ public class CountdownStatusInfo
         public Ofd ofd { get; set; }
     }
 
-    public class FiscalParams : IFiscalParam
+    public class FiscalParamsBase : FiscalParamBase
     {
-        public DateTime FiscalDocumentDateTime { get; set; }
-        public int FiscalDocumentNumber { get; set; }
-        public string FiscalDocumentSign { get; set; }
-        public string FnNumber { get; set; }
         [JsonProperty("fnQuantityCounters")]
         public FnQuantityCounters fnQuantityCounters { get; set; }
         [JsonProperty("fnTotals")]
         public FnTotals fnTotals { get; set; }
         [JsonProperty("fnUnsentDocsCounters")]
         public FnUnsentDocsCounters fnUnsentDocsCounters { get; set; }
-        public string FnsUrl { get; set; }
-        public int Total { get; set; }
         public int receiptsCount { get; set; }
-        public string RegistrationNumber { get; set; }
-        public int ShiftNumber { get; set; }
-        
+
     }
 
     public class Fn
@@ -146,14 +137,6 @@ public class CountdownStatusInfo
     {
         public int code { get; set; }
         public string description { get; set; }
-    }
-
-    public class Root
-    {
-        public FiscalParams fiscalParams { get; set; }
-        public Errors errors { get; set; }
-        public Status status { get; set; }
-        public Warnings warnings { get; set; }
     }
 
     public class Sell : CountBase

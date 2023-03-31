@@ -19,7 +19,7 @@
     }
   },
   "Printer": {
-    "SerialPort": "COM7",
+    "SerialPort": "COM16",
     "BaundRate" : 115200
   },
   "CashValidator": {

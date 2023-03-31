@@ -1,4 +1,4 @@
-﻿namespace AtolDriver.Models;
+﻿namespace AtolDriver.Models.AnswerModel;
 
 public class PrinterStatus
 {

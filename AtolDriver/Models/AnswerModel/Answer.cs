@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
-
-namespace AtolDriver.Models;
+﻿namespace AtolDriver.Models.AnswerModel;
 
 public class Answer
 {

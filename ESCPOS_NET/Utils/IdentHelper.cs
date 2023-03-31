@@ -1,7 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 
-namespace ESCPOS_NET.ConsoleTest
+namespace ESCPOS_NET.Utils
 {
     public class IdentHelper
     {

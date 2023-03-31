@@ -3,7 +3,9 @@ using Atol.Drivers10.Fptr;
 using Newtonsoft.Json;
 using AtolDriver.Models;
 using System.Text;
-using AtolDriver.Interface;
+using AtolDriver.BaseClass;
+using AtolDriver.Models.AnswerModel;
+using AtolDriver.Models.RequestModel;
 using AtolDriver.Utils;
 
 namespace AtolDriver
@@ -15,7 +17,7 @@ namespace AtolDriver
 
         readonly IFptr _fptr;
         Operator _cashier;
-        IReceipt _receipt;
+        ReceiptBase _receipt;
 
         public AtolInterface(int port, int speed)
         {

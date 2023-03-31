@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 using AtolDriver;
 using AtolDriver.Models;
+using AtolDriver.Models.RequestModel;
 using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
 using FreeKassa.Enum;
@@ -44,6 +46,7 @@ namespace FreeKassa
         {
             _simpleLogger = new SimpleLogger();
             _settings = ConfigHelper.GetSettings();
+            CreateLastShiftsFile();
             _simpleLogger.Info("Касса запускается");
             if (_settings != null) return;
             _simpleLogger.Fatal("SettingsExceptions: Не удалось получить настройки кассы");
@@ -94,6 +97,12 @@ namespace FreeKassa
             }
             _simpleLogger.Info("Касса запущена");
             return true;
+        }
+
+        private void CreateLastShiftsFile()
+        {
+            if(File.Exists("LastOpenShifts.txt")) return;
+            File.Create("LastOpenShifts.txt");
         }
 
         #endregion
@@ -199,7 +208,7 @@ namespace FreeKassa
 
             return true;
         }
-        public bool PrintUsersDocument(IEnumerable<TicketModel> tikets)
+        public bool PrintUsersDocument(byte[] document)
         {
             if (_printerManager == null)
             {
@@ -207,7 +216,7 @@ namespace FreeKassa
                 _printerManager = new PrinterManager(_vkp80Ii, ConfigHelper.GetSettings().Printer);
             }
             
-            _printerManager.Print(models: tikets);
+            _printerManager.Print(document);
             
 
             return true;

@@ -6,81 +6,63 @@ using System.Threading;
 using AtolDriver;
 using AtolDriver.Models;
 using AtolDriver.Utils;
+using ESCPOS_NET.Emitters;
 using ESCPOS_NET.Utils;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Model.PrinitngDocumensModel;
 using FreeKassa.Payment.Pinpad.Inpas;
 using FreeKassa.Payment.Pinpad.Sberbank;
+using FreeKassa.Printer.FormForPrinting;
 using FreeKassa.Utils;
 using Newtonsoft.Json.Linq;
 
 namespace FreeKassa
 {
+    
+    
     public class Test
     {
 
 
         public static void Main(string[] args)
         {
-
-
+            var k = new KassaManager();
+            k.StartKassa();
             
+            
+            k.Successfully += delegate(ChequeFormModel cheque)
+            {
+                var d = cheque;
+                Console.Write("+");
+            };
+            
+            k.RegisterReceipt(new ReceiptModel()
+                {
+                    isElectron = true,
+                    TaxationType = TaxationTypeEnum.TtPatent,
+                    TypeReceipt = TypeReceipt.Sell
+                },
+                new List<BasketModel>()
+                {
+                    new BasketModel()
+                    {
+                        Cost = 2900,
+                        MeasurementUnit = MeasurementUnitEnum.Piece,
+                        Name = "Футболка «LOVE»",
+                        PaymentObject = PaymentObjectEnum.Commodity,
+                        Quantity = 1,
+                        TaxType = TaxTypeEnum.Vat20
+                    }
+                },
+                new PayModel()
+                {
+                    PaymentType = PaymentTypeEnum.Electronically,
+                    Sum = 2900
+                }
+            );
 
-
-
-
-
-            //var str = File.ReadAllText("test2.json");
-            //var jobj = DeserializeHelper.Deserialize(str, model: new CountdownStatusInfo());
-
-
-
-            // var k = new KassaManager();
-            // k.StartKassa();
-
-            //var it = test2.DataAboutCloseShift();
-
-
-
-            // var _kktModel = (KKTModel)ConfigHelper.GetSettings("KKT");
-            // var inter = new Interface(_kktModel.Port, _kktModel.PortSpeed);
-            // inter.OpenConnection();
-            // var date = DateTime.Now;
-            // var dateNow = DateTime.Now;
-            // var sta = inter.GetShiftStatus();
-            // if (date.Day == dateNow.Day && date.Month == dateNow.Month)
-            // {
-            //     if (dateNow >= _kktModel.OpenShifts && dateNow < _kktModel.CloseShifts)
-            //     {
-            //         if (sta == 0)
-            //         {
-            //             inter.SetOperator(_kktModel.CashierName, _kktModel.OperatorInn);
-            //             var openShiftsAnswer = inter.OpenShift();
-            //             return;
-            //         };
-            //     }
-            //     else
-            //     {
-            //         if (sta == 1) inter.CloseShift();
-            //     }
-            //     return;
-            // }
-            // if (dateNow.Hour >= _kktModel.OpenShifts.Hour && dateNow.Hour < _kktModel.CloseShifts.Hour)
-            // {
-            //     if (sta == 0)
-            //     {
-            //         inter.SetOperator(_kktModel.CashierName, _kktModel.OperatorInn);
-            //         var openShiftsAnswer = inter.OpenShift();
-            //         return;
-            //     }
-            // }
-            // else
-            // {
-            //     if (sta == 1) inter.CloseShift();
-            // }
-
-
+            Console.ReadLine();
 
 
 
