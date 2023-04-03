@@ -54,9 +54,9 @@ namespace FreeKassa.Printer
         {
             SendToPrint(TiсketForm.GetTicketForm(_vkp80ii,models));
         }
-        public void Print(FormBase document)
+        public void Print(byte[] document)
         {
-            SendToPrint(document.Data);
+            SendToPrint(document);
         }
     }
 }

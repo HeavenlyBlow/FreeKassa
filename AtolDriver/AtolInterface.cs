@@ -18,9 +18,11 @@ namespace AtolDriver
         readonly IFptr _fptr;
         Operator _cashier;
         ReceiptBase _receipt;
+        private readonly bool _isMarked; 
 
-        public AtolInterface(int port, int speed)
+        public AtolInterface(int port, int speed, bool isMarked)
         {
+            _isMarked = isMarked;
             _fptr = new Fptr();
             _fptr.setSingleSetting(Constants.LIBFPTR_SETTING_MODEL, Constants.LIBFPTR_MODEL_ATOL_AUTO.ToString());
             _fptr.setSingleSetting(Constants.LIBFPTR_SETTING_PORT, Constants.LIBFPTR_PORT_COM.ToString());
@@ -95,7 +97,7 @@ namespace AtolDriver
         /// <param name="client">Информация о клиенте </param>
         /// <param name="isMarked">Маркированный чек</param>
         public void OpenReceipt(bool isElectronicReceipt ,TypeReceipt typeReceiptEnum ,
-            TaxationTypeEnum taxationTypeEnum, ClientInfo? client = null, bool isMarked = false)
+            TaxationTypeEnum taxationTypeEnum, ClientInfo? client = null)
         {
             _receipt = new ReceiptBase()
             {
@@ -108,7 +110,7 @@ namespace AtolDriver
                 Electronic = isElectronicReceipt
             };
 
-            if (isMarked)
+            if (_isMarked)
             {
                 _receipt.ValidateMarkingCodes = true;
             }
@@ -138,10 +140,8 @@ namespace AtolDriver
                 Amount = price * quantity,
                 Tax = new Tax { Type = GetTaxTypeEnum(taxationTypeEnum) }
             };
-
-
             
-            if (_receipt.ValidateMarkingCodes && !ims.Equals(""))
+            if ((_receipt.ValidateMarkingCodes) && (ims is not null))
             {
                 item.ImcParams = new ImcParams()
                 {
@@ -177,8 +177,14 @@ namespace AtolDriver
         {
             SendJson(_receipt, out var answer);
             if (answer.Code == -1) { return null; }
-            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new ChequeInfo(), token: "fiscalParams");
+
+            object? jobj;
+            
+            jobj = _isMarked ? JsonConvert.DeserializeObject<ChequeInfo>(answer.Json) 
+                : DeserializeHelper.Deserialize(answer.Json, model: new ChequeInfo(), token: "fiscalParams");
+
             if (jobj == null) return null;
+            
             return (ChequeInfo)jobj;
         }
         

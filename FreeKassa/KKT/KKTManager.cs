@@ -66,7 +66,7 @@ namespace FreeKassa.KKT
         private void StartKKT()
         {
             //TODO Допсать обработку для печати!
-            _atolInterface = new AtolInterface(_kktModel.SerialPort, _kktModel.BaundRate);
+            _atolInterface = new AtolInterface(_kktModel.SerialPort, _kktModel.BaundRate, _kktModel.MarkedProducts);
             if (_atolInterface.OpenConnection() != 0)
             {
                 _logger.Fatal("OpenConnectionException: Ошибка подключения к ККТ");
@@ -214,11 +214,13 @@ namespace FreeKassa.KKT
         public void OpenReceipt(ReceiptModel receiptType, ClientInfo clientInfo = null)
         {
             var status = _atolInterface.GetShiftStatus();
+            
             if (status != 1)
             {
                 _logger.Fatal($"OpenReceipt: Чек не может быть открыт так как статус смены {status}");
                 throw new ShiftException("Смена не открыта!");
             }
+            
             _atolInterface.OpenReceipt(receiptType.isElectron,receiptType.TypeReceipt, receiptType.TaxationType, clientInfo);
         }
         public void AddProduct(BasketModel product)
@@ -256,7 +258,16 @@ namespace FreeKassa.KKT
             {
                 var error = _atolInterface.ReadError();
                 _logger.Fatal($"CloseReceipt: Ошибка закрытия чека {error}");
+                
                 throw new ChequeException(_atolInterface.ReadError());
+            }
+
+            if (MarkingErrors(chequeInfo))
+            {
+                _logger.Fatal("CloseReceipt: Чек не фискализирован!");
+                data = null;
+                
+                return;
             }
             
             data = DataAboutChequeReceipt(pay, basketModels, receiptModel, chequeInfo);
@@ -264,10 +275,33 @@ namespace FreeKassa.KKT
             if (data == null)
             {
                 _logger.Error($"CloseReceipt: Не хватает данных для печати");
+                
                 throw new ChequeException("Не хватает данных для печати");
             }
             
             if(_printerManager != null && !receiptModel.isElectron) _printerManager.Print(data);
+        }
+
+        /// <summary>
+        /// Проверка ошибок проверки маркировки
+        /// </summary>
+        /// <param name="info">Ответ ккт</param>
+        /// <returns></returns>
+        private bool MarkingErrors(ChequeInfo info)
+        {
+            if (info.ValidateMarks.Count == 0) return false;
+
+            var isError = false;
+
+            foreach (var item in info.ValidateMarks)
+            {
+                if (item.DriverError.Code == 0) continue;
+                
+                isError = true;
+                _logger.Fatal($"MarkingErrors: Ошибка проверки маркировки: {item.DriverError.Error}");
+            }
+
+            return isError;
         }
 
         #endregion

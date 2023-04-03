@@ -38,6 +38,14 @@ namespace FreeKassa
                 var d = cheque;
                 Console.Write("+");
 
+                var form = new UserCheque(new EPSON(), cheque);
+                k.PrintUsersDocument(form.Data);
+
+            };
+            
+            k.Error += delegate(ChequeFormModel cheque)
+            {
+                Console.Write("-");
             };
 
             k.RegisterReceipt(new ReceiptModel()
@@ -50,18 +58,28 @@ namespace FreeKassa
                 {
                     new BasketModel()
                     {
-                        Cost = 2900,
+                        Cost = 30,
                         MeasurementUnit = MeasurementUnitEnum.Piece,
-                        Name = "Футболка «LOVE»",
+                        Name = "Святой источник",
                         PaymentObject = PaymentObjectEnum.Commodity,
                         Quantity = 1,
-                        TaxType = TaxTypeEnum.Vat20
+                        TaxType = TaxTypeEnum.Vat20,
+                        Ims ="0104603934000779215cx0SpahuIXuI93Wmux"
+                    },
+                    new BasketModel()
+                    {
+                        Cost = 25,
+                        MeasurementUnit = MeasurementUnitEnum.Piece,
+                        Name = "Конфета радума",
+                        PaymentObject = PaymentObjectEnum.Commodity,
+                        Quantity = 1,
+                        TaxType = TaxTypeEnum.Vat20,
                     }
                 },
                 new PayModel()
                 {
                     PaymentType = PaymentTypeEnum.Electronically,
-                    Sum = 2900
+                    Sum = 55
                 }
             );
 
@@ -74,12 +92,26 @@ namespace FreeKassa
     {
         private void SetMarkingSymbol(BasketModel model)
         {
-            if(model.Ims.Equals("")) return;
+            switch (model.Ims)
+            {
+                case null:
+                    return;
+                
+                case "":
+                    return;
+                
+                default:
+                    model.Name += " [M]";
+                    break;
+            }
+        }
 
-            model.Name += " [M]";
+        public UserCheque(EPSON e, object obj)
+        {
+            Data = GetFormData(e, obj);
         }
         
-        public override byte[] GetFormData(EPSON vkp80ii, object obj)
+        public sealed override byte[] GetFormData(EPSON vkp80ii, object obj)
         {
 
             var chequeFormModel = obj as ChequeFormModel;
@@ -99,7 +131,8 @@ namespace FreeKassa
                 data = CreateProductInCheque(vkp80ii, product, data);
             }
             
-            return ByteSplicer.Combine(data, 
+            return ByteSplicer.Combine(data,
+                vkp80ii.SetLineSpacingInDots(1), 
                 vkp80ii.PrintLine(IdentHelper.SolidLine(IdentHelper.Style.FontB)),
                 vkp80ii.PrintLine(IdentHelper.ArrangeWords("ИТОГО", $"={chequeFormModel.TotalPay}",
                     IdentHelper.Style.FontB)),

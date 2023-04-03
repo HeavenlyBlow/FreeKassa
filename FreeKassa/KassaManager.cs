@@ -1,20 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Threading.Tasks;
-using AtolDriver;
-using AtolDriver.Models;
 using AtolDriver.Models.RequestModel;
-using ESCPOS_NET;
 using ESCPOS_NET.Emitters;
 using FreeKassa.Enum;
 using FreeKassa.Extensions.KassaManagerExceptions;
-using FreeKassa.Extensions.KKTExceptions;
 using FreeKassa.KKT;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
-using FreeKassa.Model.PrinitngDocumensModel;
 using FreeKassa.Payment;
 using FreeKassa.Payment.Cash;
 using FreeKassa.Payment.Pinpad.Sberbank;
@@ -131,8 +125,14 @@ namespace FreeKassa
                 
                 _kktManager.AddPay(pay);
                 _kktManager.CloseReceipt(pay, basket, receiptType, out var data);
+
+                if (data == null)
+                {
+                    Error?.Invoke(null);
+                    
+                    return;
+                }
                 
-                // SuccessfullyReceipt?.Invoke(null, null!);
                 Successfully?.Invoke(data);
             }));
             
@@ -208,18 +208,15 @@ namespace FreeKassa
 
             return true;
         }
-        public bool PrintUsersDocument(byte[] document)
+        public void PrintUsersDocument(byte[] document)
         {
             if (_printerManager == null)
             {
-                if (_vkp80Ii == null) _vkp80Ii = new EPSON();
+                _vkp80Ii ??= new EPSON();
                 _printerManager = new PrinterManager(_vkp80Ii, ConfigHelper.GetSettings().Printer);
             }
             
             _printerManager.Print(document);
-            
-
-            return true;
         }
         /// <summary>
         /// Распечатать чек
