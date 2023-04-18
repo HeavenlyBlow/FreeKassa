@@ -35,7 +35,7 @@ namespace AtolDriver
             var kkt = new AtolInterface(4, 115200, true);
             kkt.OpenConnection();
             
-            kkt.PingMarkingServer();
+            kkt.CheckImsInMarkedServer();
 
         }
     }
