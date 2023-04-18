@@ -266,6 +266,23 @@ namespace AtolDriver
 
         #region Info
 
+        public void PingMarkingServer()
+        {
+            _fptr.pingMarkingServer();
+
+            // Ожидание результатов проверки связи с сервером ИСМ
+            
+            while (true) {
+                _fptr.getMarkingServerStatus();
+                if (_fptr.getParamBool(Constants.LIBFPTR_PARAM_CHECK_MARKING_SERVER_READY))
+                    break;
+            }
+
+            uint errorCode = _fptr.getParamInt(Constants.LIBFPTR_PARAM_MARKING_SERVER_ERROR_CODE);
+            String errorDescription = _fptr.getParamString(Constants.LIBFPTR_PARAM_MARKING_SERVER_ERROR_DESCRIPTION);
+            uint responseTime = _fptr.getParamInt(Constants.LIBFPTR_PARAM_MARKING_SERVER_RESPONSE_TIME);
+        }
+
         /// <summary>
         /// Получить номер последнего документа в ФН
         /// </summary>
