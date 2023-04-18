@@ -292,33 +292,6 @@ namespace AtolDriver
             
         }
 
-        public void CheckImsInMarkedServer()
-        {
-            var mark = "0104603934000793215z)85f%;R2FVZ93+AFs";
-            
-            _fptr.setParam(Constants.LIBFPTR_PARAM_MARKING_CODE_TYPE, Constants.LIBFPTR_MCT12_AUTO);
-            _fptr.setParam(Constants.LIBFPTR_PARAM_MARKING_CODE, mark);
-            _fptr.setParam(Constants.LIBFPTR_PARAM_MARKING_CODE_STATUS, Constants.LIBFPTR_MES_UNCHANGED);
-            // _fptr.setParam(Constants.LIBFPTR_PARAM_QUANTITY, 1.000);
-            _fptr.setParam(Constants.LIBFPTR_PARAM_MEASUREMENT_UNIT, Constants.LIBFPTR_IU_PIECE);
-            _fptr.setParam(Constants.LIBFPTR_PARAM_MARKING_PROCESSING_MODE, 0);
-            // _fptr.setParam(Constants.LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY, "1/2");
-            // _fptr.setParam(Constants.LIBFPTR_PARAM_TIMEOUT, "30000");
-            _fptr.beginMarkingCodeValidation();
-            
-            while (true) {
-                _fptr.getMarkingCodeValidationStatus();
-                if (_fptr.getParamBool(Constants.LIBFPTR_PARAM_MARKING_CODE_VALIDATION_READY))
-                    break;
-            }
-            uint validationResult = _fptr.getParamInt(Constants.LIBFPTR_PARAM_MARKING_CODE_ONLINE_VALIDATION_RESULT);
-
-            _fptr.declineMarkingCode();
-
-// Подтверждаем реализацию товара с указанным КМ
-        }
-        
-
         /// <summary>
         /// Получить номер последнего документа в ФН
         /// </summary>
