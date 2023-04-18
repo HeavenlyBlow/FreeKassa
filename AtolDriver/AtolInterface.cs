@@ -266,7 +266,12 @@ namespace AtolDriver
 
         #region Info
 
-        public void PingMarkingServer()
+        
+        /// <summary>
+        /// Проверка связи с сервером ИМС
+        /// </summary>
+        
+        public ImsStatus PingMarkingServer()
         {
             _fptr.pingMarkingServer();
 
@@ -278,9 +283,13 @@ namespace AtolDriver
                     break;
             }
 
-            uint errorCode = _fptr.getParamInt(Constants.LIBFPTR_PARAM_MARKING_SERVER_ERROR_CODE);
-            String errorDescription = _fptr.getParamString(Constants.LIBFPTR_PARAM_MARKING_SERVER_ERROR_DESCRIPTION);
-            uint responseTime = _fptr.getParamInt(Constants.LIBFPTR_PARAM_MARKING_SERVER_RESPONSE_TIME);
+            return new ImsStatus()
+            {
+                Description = _fptr.getParamString(Constants.LIBFPTR_PARAM_MARKING_SERVER_ERROR_DESCRIPTION),
+                ErrorCode = _fptr.getParamInt(Constants.LIBFPTR_PARAM_MARKING_SERVER_ERROR_CODE),
+                ResponseTime = _fptr.getParamInt(Constants.LIBFPTR_PARAM_MARKING_SERVER_RESPONSE_TIME)
+            };
+            
         }
 
         /// <summary>
