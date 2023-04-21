@@ -303,7 +303,7 @@ namespace AtolDriver
             _fptr.setParam(Constants.LIBFPTR_PARAM_MEASUREMENT_UNIT, Constants.LIBFPTR_IU_PIECE);
             _fptr.setParam(Constants.LIBFPTR_PARAM_MARKING_PROCESSING_MODE, 0);
             // _fptr.setParam(Constants.LIBFPTR_PARAM_MARKING_FRACTIONAL_QUANTITY, "1/2");
-            _fptr.setParam(Constants.LIBFPTR_PARAM_TIMEOUT, "30000");
+            // _fptr.setParam(Constants.LIBFPTR_PARAM_TIMEOUT, "30000");
             _fptr.beginMarkingCodeValidation();
             
             while (true) {
@@ -317,6 +317,7 @@ namespace AtolDriver
 
 // Подтверждаем реализацию товара с указанным КМ
         }
+        
 
         /// <summary>
         /// Получить номер последнего документа в ФН
