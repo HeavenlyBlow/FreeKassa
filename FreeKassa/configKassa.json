@@ -28,5 +28,11 @@
   },
   "Sberbank": {
     "Directory": "C:\\WinSber"
+  },
+  
+  "BarcodeScanner": {
+    "IsEnable": true,
+    "SerialPort": "COM6",
+    "BaundRate": 9600
   }
 }

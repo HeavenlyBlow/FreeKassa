@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using AtolDriver.Models.RequestModel;
 using ESCPOS_NET.Emitters;
+using FreeKassa.BarcodeScanner;
 using FreeKassa.Enum;
 using FreeKassa.Extensions.KassaManagerExceptions;
 using FreeKassa.KKT;
@@ -33,6 +34,8 @@ namespace FreeKassa
         private int _onKktPrinterManagement;
         private readonly SimpleLogger _simpleLogger;
         private SettingsModel _settings;
+        
+        public ScannerManager BarcodeScanner { get; set; }
         public delegate void Payments();
         public delegate void Receipt(ChequeFormModel cheque);
         
@@ -88,6 +91,11 @@ namespace FreeKassa
             else
             {
                 _kktManager = new KKTManager(_settings.KKT, _simpleLogger);
+            }
+
+            if (_settings.BarcodeScanner.IsEnable)
+            {
+                BarcodeScanner = new ScannerManager(_settings.BarcodeScanner.SerialPort, _settings.BarcodeScanner.BaundRate, _simpleLogger);
             }
             _simpleLogger.Info("Касса запущена");
             return true;
