@@ -5,6 +5,8 @@ namespace FreeKassa.Model
     public class SettingsModel
     {
         public KKT KKT { get; set; }
+        
+        public BarcodeScanner BarcodeScanner { get; set; }
         public Printer Printer { get; set; }
         public CashValidatorModel CashValidator { get; set; }
         public Sberbank Sberbank { get; set; }
@@ -13,6 +15,13 @@ namespace FreeKassa.Model
     public class Sberbank
     {
         public string Directory { get; set; }
+    }
+
+    public class BarcodeScanner
+    {
+        public bool IsEnable { get; set; }
+        public string SerialPort { get; set; }
+        public int BaundRate { get; set; }
     }
 
     public class CashValidatorModel
