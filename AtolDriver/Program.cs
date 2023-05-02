@@ -31,6 +31,7 @@ namespace AtolDriver
             // printer.CloseReceipt();
             // // printer.PrintStatus();
             // printer.CloseShift();
+            
         }
     }
 }
