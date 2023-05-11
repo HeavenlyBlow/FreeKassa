@@ -20,6 +20,7 @@ namespace FreeKassa.BarcodeScanner
             _serial = new SerialPort(serialPort, baundRate, Parity.None, 8, StopBits.One);
             _serial.DtrEnable = true;
             _serial.RtsEnable = true;
+            _serial.Open();
         }
 
         public void StartReading()
@@ -39,6 +40,7 @@ namespace FreeKassa.BarcodeScanner
 
         public void Dispose()
         {
+            _serial?.Close();
             _serial?.Dispose();
         }
     }
