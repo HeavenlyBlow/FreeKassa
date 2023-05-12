@@ -29,159 +29,169 @@ namespace FreeKassa
 
         public static void Main(string[] args)
         {
-            var k = new KassaManager();
-            k.StartKassa();
 
 
-            k.Successfully += delegate(ChequeFormModel cheque)
-            {
-                var d = cheque;
-                Console.Write("+");
-
-                var form = new UserCheque(new EPSON(), cheque);
-                k.PrintUsersDocument(form.Data);
-
-            };
-            
-            k.Error += delegate(ChequeFormModel cheque)
-            {
-                Console.Write("-");
-            };
-
-            k.RegisterReceipt(new ReceiptModel()
-                {
-                    isElectron = true,
-                    TaxationType = TaxationTypeEnum.TtPatent,
-                    TypeReceipt = TypeReceipt.Sell
-                },
-                new List<BasketModel>()
-                {
-                    new BasketModel()
-                    {
-                        Cost = 30,
-                        MeasurementUnit = MeasurementUnitEnum.Piece,
-                        Name = "Святой источник",
-                        PaymentObject = PaymentObjectEnum.Commodity,
-                        Quantity = 1,
-                        TaxType = TaxTypeEnum.Vat20,
-                        Ims ="0104603934000779215cx0SpahuIXuI93Wmux"
-                    },
-                    new BasketModel()
-                    {
-                        Cost = 25,
-                        MeasurementUnit = MeasurementUnitEnum.Piece,
-                        Name = "Конфета радума",
-                        PaymentObject = PaymentObjectEnum.Commodity,
-                        Quantity = 1,
-                        TaxType = TaxTypeEnum.Vat20,
-                    }
-                },
-                new PayModel()
-                {
-                    PaymentType = PaymentTypeEnum.Electronically,
-                    Sum = 55
-                }
-            );
+            var inpas = new InpasPayment(new SimpleLogger());
+            inpas.StartPayment(100, "");
 
             Console.ReadLine();
-            
+
         }
     }
     
-    public class UserCheque : FormBase
-    {
-        private void SetMarkingSymbol(BasketModel model)
-        {
-            switch (model.Ims)
-            {
-                case null:
-                    return;
-                
-                case "":
-                    return;
-                
-                default:
-                    model.Name += " [M]";
-                    break;
-            }
-        }
-
-        public UserCheque(EPSON e, object obj)
-        {
-            Data = GetFormData(e, obj);
-        }
-        
-        public sealed override byte[] GetFormData(EPSON vkp80ii, object obj)
-        {
-
-            var chequeFormModel = obj as ChequeFormModel;
-            
-            var data = ByteSplicer.Combine(
-                vkp80ii.CenterAlign(),
-                vkp80ii.SetStyles(PrintStyle.FontB),
-                vkp80ii.SetLineSpacingInDots(1),
-                vkp80ii.PrintLine("ИП ПОВАРНИЦЫНА"),
-                vkp80ii.PrintLine("НАТАЛЬЯ ВИТАЛЬЕВНА"),
-                vkp80ii.PrintLine("Кассовый чек"),
-                vkp80ii.LeftAlign()
-            );
-            foreach (var product in chequeFormModel.Products)
-            {
-                SetMarkingSymbol(product);
-                data = CreateProductInCheque(vkp80ii, product, data);
-            }
-            
-            return ByteSplicer.Combine(data,
-                vkp80ii.SetLineSpacingInDots(1), 
-                vkp80ii.PrintLine(IdentHelper.SolidLine(IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("ИТОГО", $"={chequeFormModel.TotalPay}",
-                    IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.SolidLine(IdentHelper.Style.FontB)),
-                vkp80ii.SetStyles(PrintStyle.FontB),
-                //Налоги должны считаться отдельно
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords(chequeFormModel.TaxesType,
-                    $"={chequeFormModel.AmountOfTaxes}", IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords(chequeFormModel.TypePay, $"={chequeFormModel.TotalPay}",
-                    IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("Кассир", chequeFormModel.CashierName,
-                    IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(chequeFormModel.CompanyName),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("Место расчетов", chequeFormModel.Address,
-                    IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(chequeFormModel.DateTime),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("СНО", chequeFormModel.TaxesType, IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("Сайт ФНС", "https://nalog.gov.ru",
-                    IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("РН ККТ", $"{chequeFormModel.RegisterNumberKKT}",
-                    IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("ЗН ККТ", chequeFormModel.SerialNumberKKT, IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("ИНН", $"{chequeFormModel.Inn}", IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("ФН", $"{chequeFormModel.FiscalStorageRegisterNumber}",
-                    IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("ФД", $"{chequeFormModel.FiscalDocumentNumber}",
-                    IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords("ФП", $"{chequeFormModel.FiscalFeatureDocument}",
-                    IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(""),
-                vkp80ii.LeftAlign(),
-                vkp80ii.PrintImage(chequeFormModel.QrCode, false, true),
-                vkp80ii.PrintLine(""),
-                vkp80ii.PrintLine("")
-            );
-
-
-        }
-        
-        private static byte[] CreateProductInCheque(EPSON vkp80ii ,BasketModel product, byte[] data)
-        {
-            return ByteSplicer.Combine(data,
-                vkp80ii.SetLineSpacingInDots(1),
-                vkp80ii.PrintLine(product.Name),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords($"{product.Cost}  *  {product.Quantity}",
-                    $"={product.Cost * product.Quantity}", IdentHelper.Style.FontB)),
-                vkp80ii.PrintLine(IdentHelper.ArrangeWords(product.TaxTypeString,
-                    $"={product.QuantityVat.ToString(CultureInfo.InvariantCulture)}", IdentHelper.Style.FontB)));}
-    }
+    //         var k = new KassaManager();
+    //         k.StartKassa();
+    //
+    //
+    //         k.Successfully += delegate(ChequeFormModel cheque)
+    //         {
+    //             var d = cheque;
+    //             Console.Write("+");
+    //
+    //             var form = new UserCheque(new EPSON(), cheque);
+    //             k.PrintUsersDocument(form.Data);
+    //
+    //         };
+    //         
+    //         k.Error += delegate(ChequeFormModel cheque)
+    //         {
+    //             Console.Write("-");
+    //         };
+    //
+    //         k.RegisterReceipt(new ReceiptModel()
+    //             {
+    //                 isElectron = true,
+    //                 TaxationType = TaxationTypeEnum.TtPatent,
+    //                 TypeReceipt = TypeReceipt.Sell
+    //             },
+    //             new List<BasketModel>()
+    //             {
+    //                 new BasketModel()
+    //                 {
+    //                     Cost = 30,
+    //                     MeasurementUnit = MeasurementUnitEnum.Piece,
+    //                     Name = "Святой источник",
+    //                     PaymentObject = PaymentObjectEnum.Commodity,
+    //                     Quantity = 1,
+    //                     TaxType = TaxTypeEnum.Vat20,
+    //                     Ims ="0104603934000779215cx0SpahuIXuI93Wmux"
+    //                 },
+    //                 new BasketModel()
+    //                 {
+    //                     Cost = 25,
+    //                     MeasurementUnit = MeasurementUnitEnum.Piece,
+    //                     Name = "Конфета радума",
+    //                     PaymentObject = PaymentObjectEnum.Commodity,
+    //                     Quantity = 1,
+    //                     TaxType = TaxTypeEnum.Vat20,
+    //                 }
+    //             },
+    //             new PayModel()
+    //             {
+    //                 PaymentType = PaymentTypeEnum.Electronically,
+    //                 Sum = 55
+    //             }
+    //         );
+    //
+    //         Console.ReadLine();
+    //         
+    //     }
+    // }
+    //
+    // public class UserCheque : FormBase
+    // {
+    //     private void SetMarkingSymbol(BasketModel model)
+    //     {
+    //         switch (model.Ims)
+    //         {
+    //             case null:
+    //                 return;
+    //             
+    //             case "":
+    //                 return;
+    //             
+    //             default:
+    //                 model.Name += " [M]";
+    //                 break;
+    //         }
+    //     }
+    //
+    //     public UserCheque(EPSON e, object obj)
+    //     {
+    //         Data = GetFormData(e, obj);
+    //     }
+    //     
+    //     public sealed override byte[] GetFormData(EPSON vkp80ii, object obj)
+    //     {
+    //
+    //         var chequeFormModel = obj as ChequeFormModel;
+    //         
+    //         var data = ByteSplicer.Combine(
+    //             vkp80ii.CenterAlign(),
+    //             vkp80ii.SetStyles(PrintStyle.FontB),
+    //             vkp80ii.SetLineSpacingInDots(1),
+    //             vkp80ii.PrintLine("ИП ПОВАРНИЦЫНА"),
+    //             vkp80ii.PrintLine("НАТАЛЬЯ ВИТАЛЬЕВНА"),
+    //             vkp80ii.PrintLine("Кассовый чек"),
+    //             vkp80ii.LeftAlign()
+    //         );
+    //         foreach (var product in chequeFormModel.Products)
+    //         {
+    //             SetMarkingSymbol(product);
+    //             data = CreateProductInCheque(vkp80ii, product, data);
+    //         }
+    //         
+    //         return ByteSplicer.Combine(data,
+    //             vkp80ii.SetLineSpacingInDots(1), 
+    //             vkp80ii.PrintLine(IdentHelper.SolidLine(IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("ИТОГО", $"={chequeFormModel.TotalPay}",
+    //                 IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.SolidLine(IdentHelper.Style.FontB)),
+    //             vkp80ii.SetStyles(PrintStyle.FontB),
+    //             //Налоги должны считаться отдельно
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords(chequeFormModel.TaxesType,
+    //                 $"={chequeFormModel.AmountOfTaxes}", IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords(chequeFormModel.TypePay, $"={chequeFormModel.TotalPay}",
+    //                 IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("Кассир", chequeFormModel.CashierName,
+    //                 IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(chequeFormModel.CompanyName),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("Место расчетов", chequeFormModel.Address,
+    //                 IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(chequeFormModel.DateTime),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("СНО", chequeFormModel.TaxesType, IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("Сайт ФНС", "https://nalog.gov.ru",
+    //                 IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("РН ККТ", $"{chequeFormModel.RegisterNumberKKT}",
+    //                 IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("ЗН ККТ", chequeFormModel.SerialNumberKKT, IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("ИНН", $"{chequeFormModel.Inn}", IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("ФН", $"{chequeFormModel.FiscalStorageRegisterNumber}",
+    //                 IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("ФД", $"{chequeFormModel.FiscalDocumentNumber}",
+    //                 IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords("ФП", $"{chequeFormModel.FiscalFeatureDocument}",
+    //                 IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(""),
+    //             vkp80ii.LeftAlign(),
+    //             vkp80ii.PrintImage(chequeFormModel.QrCode, false, true),
+    //             vkp80ii.PrintLine(""),
+    //             vkp80ii.PrintLine("")
+    //         );
+    //
+    //
+    //     }
+    //     
+    //     private static byte[] CreateProductInCheque(EPSON vkp80ii ,BasketModel product, byte[] data)
+    //     {
+    //         return ByteSplicer.Combine(data,
+    //             vkp80ii.SetLineSpacingInDots(1),
+    //             vkp80ii.PrintLine(product.Name),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords($"{product.Cost}  *  {product.Quantity}",
+    //                 $"={product.Cost * product.Quantity}", IdentHelper.Style.FontB)),
+    //             vkp80ii.PrintLine(IdentHelper.ArrangeWords(product.TaxTypeString,
+    //                 $"={product.QuantityVat.ToString(CultureInfo.InvariantCulture)}", IdentHelper.Style.FontB)));}
+    // }
 }
 
 //var lis = GetTicket();

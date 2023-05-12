@@ -40,7 +40,6 @@
 
     <ItemGroup>
       <Folder Include="Extensions\PrinterExceptions" />
-      <Folder Include="Payment\Pinpad\Inpas\DLL" />
     </ItemGroup>
 
     <ItemGroup>

@@ -37,7 +37,7 @@ namespace FreeKassa.Payment.Pinpad.Inpas
 
         private void dclink_OnExchange(int result)
         {
-            
+            _logger.Info($"Result: {result}");
             _dcLink.Dispose();
         }
 

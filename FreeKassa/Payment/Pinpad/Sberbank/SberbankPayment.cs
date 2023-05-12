@@ -60,6 +60,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
                     {
                         _logger.Info("Оплата прошла");
                         OnSuccessfully();
+                        
                         break;
                     }
                     
@@ -72,15 +73,17 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
                         
                         if (!RestartShift())
                         {
-                            OnSuccessfully();
+                            OnError();
                             
-                            return;
+                            break;
                         }
                         
                         MakePayment(amount);
                         
                         return;
                 }
+                
+                return;
             }
         }
         
