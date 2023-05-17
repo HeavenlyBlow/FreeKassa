@@ -1,6 +1,8 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using FreeKassa.Utils;
@@ -42,21 +44,18 @@ namespace FreeKassa.Payment.Pinpad.Inpas
                 
                 try
                 {
-                    allTextLog = File.ReadAllText(file);
+                    allTextLog = File.ReadAllText(file, Encoding.GetEncoding("ISO-8859-1"));
                 }
                 catch (IOException e)
                 {
                     continue;
                 }
-                
-                if (allTextLog.Contains("[19] = 'ОДОБРЕНО'")) 
-                    continue;
-                
+
                 var codeResult = Regex.Match(allTextLog, @"(?<=\[19\] = ')[\w\W]*?(?=')").Value.Trim();
                 
                 switch (codeResult)
                 {
-                    case "ОДОБРЕНО":
+                    case "ÎÄÎÁÐÅÍÎ":
                     {
                         _logger.Info("Оплата прошла");
                         OnSuccessfully();
@@ -64,7 +63,7 @@ namespace FreeKassa.Payment.Pinpad.Inpas
                         break;
                     }
 
-                    case "ОПЕРАЦИЯ ПРЕРВАНА":
+                    case "ÎÏÅÐÀÖÈß ÏÐÅÐÂÀÍÀ":
                     {
                         _logger.Info("Оплата отменена");
                         OnError();

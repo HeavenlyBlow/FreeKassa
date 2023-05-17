@@ -12,6 +12,7 @@ using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Payment;
 using FreeKassa.Payment.Cash;
+using FreeKassa.Payment.Pinpad.Inpas;
 using FreeKassa.Payment.Pinpad.Sberbank;
 using FreeKassa.Printer;
 using FreeKassa.Utils;
@@ -171,9 +172,18 @@ namespace FreeKassa
                 case PaymentType.CashValidator:
 
                     var cash = new CashValidator(_simpleLogger);
+                    _paymentBase = cash;
                     cash.Successfully += PaymentOnSuccessfully;
                     cash.Error += PaymentOnError;
                     cash.StartWork((int)sum);
+                    break;
+                
+                case PaymentType.InpasConsole:
+                    var inpas = new InpasConsolPayment(_simpleLogger, _settings.InpasConsole);
+                    _paymentBase = inpas;
+                    inpas.Successfully += PaymentOnSuccessfully;
+                    inpas.Error += PaymentOnError;
+                    inpas.StartPayment(sum);
                     break;
                 
                 default:

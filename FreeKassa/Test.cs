@@ -11,6 +11,7 @@ using ESCPOS_NET.Emitters;
 using ESCPOS_NET.Utilities;
 using ESCPOS_NET.Utils;
 using FreeKassa.BarcodeScanner;
+using FreeKassa.Enum;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Model.PrinitngDocumensModel;
@@ -33,7 +34,7 @@ namespace FreeKassa
 
 
             var kassa = new KassaManager();
-            kassa.StartKassa();
+            // kassa.StartKassa();
 
             kassa.Successfully += cheque =>
             {
@@ -41,50 +42,59 @@ namespace FreeKassa
                 kassa.PrintCheque(cheque);
 
             };
-
-            kassa.BarcodeScanner.Successfully += code =>
+            
+            kassa.SuccessfullyPayment += () =>
             {
-                
-                kassa.BarcodeScanner.StopReading();
-                
-                
-                var basket = new List<BasketModel>()
-                {
-                    new BasketModel()
-                    {
-                        Cost = 150,
-                        Name = "Мин.вода Байкал глубинная 0,85л н/г ",
-                        Ims = code,
-                        MeasurementUnit = MeasurementUnitEnum.Piece,
-                        PaymentObject = PaymentObjectEnum.Commodity,
-                        Quantity = 1,
-                        TaxType = TaxTypeEnum.No
-                    }
-                };
-                
-                
-                kassa.RegisterReceipt(
-
-                    new ReceiptModel()
-                    {
-                        isElectron = true,
-                        TaxationType = TaxationTypeEnum.UsnIncomeOutcome,
-                        TypeReceipt = TypeReceipt.Sell
-                    },
-
-                    basket,
-
-                    new PayModel()
-                    {
-                        PaymentType = PaymentTypeEnum.Electronically,
-                        Sum = 150
-                    }
-                );
-                
+                Console.WriteLine("+");
             };
             
             
-            kassa.BarcodeScanner.StartReading();
+            kassa.StartPayment(PaymentType.InpasConsole, 100);
+            
+
+            // kassa.BarcodeScanner.Successfully += code =>
+            // {
+            //     
+            //     kassa.BarcodeScanner.StopReading();
+            //     
+            //     
+            //     var basket = new List<BasketModel>()
+            //     {
+            //         new BasketModel()
+            //         {
+            //             Cost = 150,
+            //             Name = "Мин.вода Байкал глубинная 0,85л н/г ",
+            //             Ims = code,
+            //             MeasurementUnit = MeasurementUnitEnum.Piece,
+            //             PaymentObject = PaymentObjectEnum.Commodity,
+            //             Quantity = 1,
+            //             TaxType = TaxTypeEnum.No
+            //         }
+            //     };
+            //     
+            //     
+            //     kassa.RegisterReceipt(
+            //
+            //         new ReceiptModel()
+            //         {
+            //             isElectron = true,
+            //             TaxationType = TaxationTypeEnum.UsnIncomeOutcome,
+            //             TypeReceipt = TypeReceipt.Sell
+            //         },
+            //
+            //         basket,
+            //
+            //         new PayModel()
+            //         {
+            //             PaymentType = PaymentTypeEnum.Electronically,
+            //             Sum = 150
+            //         }
+            //     );
+            //     
+            // };
+            
+            
+            // kassa.BarcodeScanner.StartReading();
 
             Console.ReadLine();
 
