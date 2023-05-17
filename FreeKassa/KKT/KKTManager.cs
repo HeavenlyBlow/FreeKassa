@@ -262,12 +262,15 @@ namespace FreeKassa.KKT
                 throw new ChequeException(_atolInterface.ReadError());
             }
 
-            if (MarkingErrors(chequeInfo))
+            if (_kktModel.MarkedProducts)
             {
-                _logger.Fatal("CloseReceipt: Чек не фискализирован!");
-                data = null;
+                if (MarkingErrors(chequeInfo))
+                {
+                    _logger.Fatal("CloseReceipt: Чек не фискализирован!");
+                    data = null;
                 
-                return;
+                    return;
+                }
             }
             
             data = DataAboutChequeReceipt(pay, basketModels, receiptModel, chequeInfo);
