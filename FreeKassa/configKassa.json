@@ -29,6 +29,13 @@
   "Sberbank": {
     "Directory": "C:\\WinSber"
   },
+
+  "InpasConsolePath": {
+    "Directory": "C:\\Program Files (x86)\\INPAS\\DualConnector",
+    "SerialPort" : 9,
+    "BaundRate": 115200,
+    "TerminalId" : "0"
+  },
   
   "BarcodeScanner": {
     "IsEnable": true,

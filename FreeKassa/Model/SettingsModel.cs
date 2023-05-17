@@ -10,11 +10,20 @@ namespace FreeKassa.Model
         public Printer Printer { get; set; }
         public CashValidatorModel CashValidator { get; set; }
         public Sberbank Sberbank { get; set; }
+        public InpasConsolePath InpasConsole { get; set; }
     }
 
     public class Sberbank
     {
         public string Directory { get; set; }
+    }
+
+    public class InpasConsolePath
+    {
+        public string Directory { get; set; }
+        public int SerialPort { get; set; }
+        public int BaundRate { get; set; }
+        public string TerminalId { get; set; }
     }
 
     public class BarcodeScanner
