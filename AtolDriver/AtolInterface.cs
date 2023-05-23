@@ -16,6 +16,7 @@ namespace AtolDriver
         #region Header
 
         readonly IFptr _fptr;
+        private object _locker = new();
         Operator _cashier;
         ReceiptBase _receipt;
         private readonly bool _isMarked; 
@@ -39,12 +40,15 @@ namespace AtolDriver
 
         private void SendJson<T>(T request, out Answer answer)
         {
-            _fptr.setParam(Constants.LIBFPTR_PARAM_JSON_DATA, JsonConvert.SerializeObject(request));
-            answer = new Answer()
+            lock (_locker)
             {
-                Code = _fptr.processJson(),
-                Json = _fptr.getParamString(Constants.LIBFPTR_PARAM_JSON_DATA)
-            };
+                _fptr.setParam(Constants.LIBFPTR_PARAM_JSON_DATA, JsonConvert.SerializeObject(request));
+                answer = new Answer()
+                {
+                    Code = _fptr.processJson(),
+                    Json = _fptr.getParamString(Constants.LIBFPTR_PARAM_JSON_DATA)
+                };
+            }
         }
         /// <summary>
         /// Открыть соединение
@@ -127,7 +131,7 @@ namespace AtolDriver
         /// <param name="taxationTypeEnum">Процент налога</param>
         /// <param name="ims">Код маркировки</param>
         public void AddPosition(string name, double price, double quantity, MeasurementUnitEnum measurementUnitEnum,
-            PaymentObjectEnum paymentObjectEnum, TaxTypeEnum taxationTypeEnum, string ims = "")
+            PaymentObjectEnum paymentObjectEnum, TaxTypeEnum taxationTypeEnum)
         {
             var item = new Item()
             {
@@ -141,18 +145,37 @@ namespace AtolDriver
                 Tax = new Tax { Type = GetTaxTypeEnum(taxationTypeEnum) }
             };
             
-            if ((_receipt.ValidateMarkingCodes) && (ims is not null))
+            _receipt.Items.Add(item);
+        }
+
+        public Marks? ValidateMarks(List<string> marksList)
+        {
+            var model = new ValidateMarksRequest()
             {
-                item.ImcParams = new ImcParams()
+                Timeout = 40000,
+                Type = "validateMarks",
+                Params = new List<Param>()
+
+            };
+
+            foreach (var marked in marksList)
+            {
+                model.Params.Add(new Param()
                 {
-                    Imc = ims,
+                    Imc = marked,
                     ImcType = "auto",
                     ItemEstimatedStatus = "itemPieceSold",
                     ImcModeProcessing = 0
-                };
+                });
             }
             
-            _receipt.Items.Add(item);
+            SendJson(model, out var answer);
+            
+            if (answer.Code == -1) return null;
+            
+            var jobj = JsonConvert.DeserializeObject<Marks>(answer.Json);
+            
+            return jobj ?? null;
         }
         
         /// <summary>
@@ -179,9 +202,8 @@ namespace AtolDriver
             if (answer.Code == -1) { return null; }
 
             object? jobj;
-            
-            jobj = _isMarked ? JsonConvert.DeserializeObject<ChequeInfo>(answer.Json) 
-                : DeserializeHelper.Deserialize(answer.Json, model: new ChequeInfo(), token: "fiscalParams");
+
+            jobj = JsonConvert.DeserializeObject<ChequeInfo>(answer.Json);
 
             if (jobj == null) return null;
             
@@ -596,7 +618,7 @@ namespace AtolDriver
 
         private static string GetTaxTypeEnum(TaxTypeEnum taxTypeEnum) => taxTypeEnum switch
         {
-            TaxTypeEnum.No => "no",
+            TaxTypeEnum.None => "none",
             TaxTypeEnum.Vat0 => "vat0",
             TaxTypeEnum.Vat10 => "vat10",
             TaxTypeEnum.Vat20 => "vat20",
@@ -663,7 +685,7 @@ namespace AtolDriver
         /// <summary>
         /// не облагается
         /// </summary>
-        No,
+        None,
         /// <summary>
         /// НДС 20%
         /// </summary>

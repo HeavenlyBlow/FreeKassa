@@ -61,7 +61,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
                         _logger.Info("Оплата прошла");
                         OnSuccessfully();
                         
-                        break;
+                        return;
                     }
                     
                     case "2000":
@@ -75,7 +75,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
                         {
                             OnError();
                             
-                            break;
+                            return;
                         }
                         
                         MakePayment(amount);

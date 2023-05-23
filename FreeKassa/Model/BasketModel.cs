@@ -1,4 +1,5 @@
-﻿using AtolDriver;
+﻿using System.Collections.Generic;
+using AtolDriver;
 
 namespace FreeKassa.Model
 {
@@ -53,7 +54,7 @@ namespace FreeKassa.Model
                 return (((Cost * Quantity) * tax) / 100);
             }
         }
-        public string Ims { get; set; }
+        public List<string> Ims { get; set; }
         
     }
 }

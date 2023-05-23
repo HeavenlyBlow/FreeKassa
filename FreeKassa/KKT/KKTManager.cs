@@ -12,6 +12,7 @@ using FreeKassa.Extensions.KKTExceptions;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Printer;
+using FreeKassa.Repository;
 using FreeKassa.Utils;
 
 namespace FreeKassa.KKT
@@ -25,10 +26,14 @@ namespace FreeKassa.KKT
         private AtolInterface _atolInterface;
         private Timer _timer;
         private object _locker = new();
+        private object _markedLocker = new();
         private bool _manualShiftManagement;
         private readonly PrinterManager _printerManager;
         private readonly SimpleLogger _logger;
-        
+        private MarkedCodeRepository _repository;
+        public delegate void ShiftsHandler();
+        public event ShiftsHandler OpenShifts;
+        public event ShiftsHandler ShiftsClose;
         
         public KKTManager(bool manualShiftManagement, PrinterManager printerManager, 
             Model.KKT kktSettings, SimpleLogger logger)
@@ -65,7 +70,7 @@ namespace FreeKassa.KKT
 
         private void StartKKT()
         {
-            //TODO Допсать обработку для печати!
+            _repository = new MarkedCodeRepository();
             _atolInterface = new AtolInterface(_kktModel.SerialPort, _kktModel.BaundRate, _kktModel.MarkedProducts);
             if (_atolInterface.OpenConnection() != 0)
             {
@@ -178,6 +183,8 @@ namespace FreeKassa.KKT
                 throw new ShiftException(error);
             }
             
+            OpenShifts?.Invoke();
+            
             FileHelper.WriteOpenShiftsDateTime();
             if(_printerManager != null) _printerManager.Print(DataAboutOpeningShift(openShiftsAnswer));
             
@@ -186,12 +193,16 @@ namespace FreeKassa.KKT
         private bool CloseShifts()
         {
             var closeShiftsAnswer = _atolInterface.CloseShift();
+            
             if (closeShiftsAnswer == null)
             {
                 var error = _atolInterface.ReadError();
                 _logger.Fatal($"CloseShifts: Закрытие смены произошло с ошибкой: {error}");
                 throw new ShiftException(error);
             }
+            
+            ShiftsClose?.Invoke();
+
             if(_printerManager != null) _printerManager.Print(DataAboutCloseShift(closeShiftsAnswer));
             
             return true;
@@ -205,6 +216,49 @@ namespace FreeKassa.KKT
         private void CheckTime(object source)
         {
             ShiftsControl();
+        }
+
+        #endregion
+
+        #region Marked
+
+        private void StartMarkedValidation()
+        {
+            var num = 0; 
+            var tm = new TimerCallback(CheckMarked); 
+            _timer = new Timer(tm,num, 150000, 60000);
+        }
+
+        private void CheckMarked(object source)
+        {
+
+            lock (_markedLocker)
+            {
+                var valid = new List<string>();
+            
+                var list = _repository.MarkedWorker<List<string>>(Work.Read);
+                if(list.Count == 0) return;
+
+                var ping = _atolInterface.PingMarkingServer();
+            
+                if(ping.ErrorCode == 1)
+                    return;
+            
+                var model = _atolInterface.ValidateMarks(list);
+
+                if (model != null)
+                    
+                    for (int i = 0; i < model.ValidateMarks.Count; i++)
+                    {
+                        if (model.ValidateMarks[i].OnlineValidation.MarkOperatorResponse.ItemStatusCheck)
+                        {
+                            valid.Add(list[i]);
+                        }
+                    }
+
+                _repository.MarkedWorker<bool>(Work.Delete, codeList: valid);
+            }
+            
         }
 
         #endregion
@@ -230,14 +284,18 @@ namespace FreeKassa.KKT
                 _logger.Fatal("AddProduct: Количество продуктов в корзине должно быть больше 0");
                 throw new ProductException("Количество должно быть больше 0!");
             }
+
+            if (product.Ims is not null)
+                _repository.MarkedWorker<bool>(Work.Save, codeList: product.Ims);
+            
+            
             _atolInterface.AddPosition(
                 product.Name,
                 product.Cost,
                 product.Quantity,
                 product.MeasurementUnit,
                 product.PaymentObject,
-                product.TaxType,
-                product.Ims);
+                product.TaxType);
             
         }
         public void AddPay(PayModel pay)
@@ -261,17 +319,7 @@ namespace FreeKassa.KKT
                 
                 throw new ChequeException(_atolInterface.ReadError());
             }
-
-            if (_kktModel.MarkedProducts)
-            {
-                if (MarkingErrors(chequeInfo))
-                {
-                    _logger.Fatal("CloseReceipt: Чек не фискализирован!");
-                    data = null;
-                
-                    return;
-                }
-            }
+            
             
             data = DataAboutChequeReceipt(pay, basketModels, receiptModel, chequeInfo);
             
@@ -290,22 +338,22 @@ namespace FreeKassa.KKT
         /// </summary>
         /// <param name="info">Ответ ккт</param>
         /// <returns></returns>
-        private bool MarkingErrors(ChequeInfo info)
-        {
-            if (info.ValidateMarks.Count == 0) return false;
-
-            var isError = false;
-
-            foreach (var item in info.ValidateMarks)
-            {
-                if (item.DriverError.Code == 0) continue;
-                
-                isError = true;
-                _logger.Fatal($"MarkingErrors: Ошибка проверки маркировки: {item.DriverError.Error}");
-            }
-
-            return isError;
-        }
+        // private bool MarkingErrors(ChequeInfo info)
+        // {
+        //     if (info.ValidateMarks.Count == 0) return false;
+        //
+        //     var isError = false;
+        //
+        //     foreach (var item in info.ValidateMarks)
+        //     {
+        //         if (item.DriverError.Code == 0) continue;
+        //         
+        //         isError = true;
+        //         _logger.Fatal($"MarkingErrors: Ошибка проверки маркировки: {item.DriverError.Error}");
+        //     }
+        //
+        //     return isError;
+        // }
 
         #endregion
 
@@ -423,44 +471,26 @@ namespace FreeKassa.KKT
             }
             string type;
             string taxesType;
-            switch (payModel.PaymentType)
+
+            type = payModel.PaymentType switch
             {
-                case PaymentTypeEnum.Cash:
-                    type = "НАЛИЧНЫМИ";
-                    break;
-                case PaymentTypeEnum.Electronically:
-                    type = "БЕЗНАЛИЧНЫМИ";
-                    break;
-                case PaymentTypeEnum.Credit:
-                    type = "КРЕДИТ";
-                    break;
-                case PaymentTypeEnum.Prepaid:
-                    type = "ПРЕДОПЛАТА";
-                    break;
-                default: throw new ArgumentOutOfRangeException();
-                
-            }
-            switch (receiptModel.TaxationType)
+                PaymentTypeEnum.Cash => "НАЛИЧНЫМИ",
+                PaymentTypeEnum.Electronically => "БЕЗНАЛИЧНЫМИ",
+                PaymentTypeEnum.Credit => "КРЕДИТ",
+                PaymentTypeEnum.Prepaid => "ПРЕДОПЛАТА",
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
+            taxesType = receiptModel.TaxationType switch
             {
-                case TaxationTypeEnum.Osn:
-                    taxesType = "ОСН";
-                    break;
-                case TaxationTypeEnum.TtEsn:
-                    taxesType = "ЕСД";
-                    break;
-                case TaxationTypeEnum.TtPatent:
-                    taxesType = "ПСН";
-                    break;
-                case TaxationTypeEnum.UsnIncome:
-                    taxesType = "УСН";
-                    break;
-                case TaxationTypeEnum.UsnIncomeOutcome:
-                    taxesType = "УСН";
-                    break;
-                default: throw new ArgumentOutOfRangeException();
-                
-            }
-            
+                TaxationTypeEnum.Osn => "ОСН",
+                TaxationTypeEnum.TtEsn => "ЕСД",
+                TaxationTypeEnum.TtPatent => "ПСН",
+                TaxationTypeEnum.UsnIncome => "УСН",
+                TaxationTypeEnum.UsnIncomeOutcome => "УСН",
+                _ => throw new ArgumentOutOfRangeException()
+            };
+
             var model = new ChequeFormModel()
             {
                 Address = company.Address,
@@ -471,13 +501,13 @@ namespace FreeKassa.KKT
                 TaxesType = taxesType,
                 AmountOfTaxes = basketModels.Sum(c=> c.QuantityVat).ToString(),
                 SerialNumberKKT = _atolInterface.GetSerialNumber(),
-                TotalPay = chequeInfo.Total.ToString(),
-                DateTime = chequeInfo.FiscalDocumentDateTime.ToString("u", CultureInfo.InvariantCulture),
-                FiscalStorageRegisterNumber = chequeInfo.FnNumber,
-                RegisterNumberKKT = chequeInfo.RegistrationNumber,
+                TotalPay = chequeInfo.FiscalParams.Total.ToString(),
+                DateTime = chequeInfo.FiscalParams.FiscalDocumentDateTime.ToString("u", CultureInfo.InvariantCulture),
+                FiscalStorageRegisterNumber = chequeInfo.FiscalParams.FnNumber,
+                RegisterNumberKKT = chequeInfo.FiscalParams.RegistrationNumber,
                 Inn = company.Vatin,
-                FiscalDocumentNumber = chequeInfo.FiscalDocumentNumber.ToString(),
-                FiscalFeatureDocument = chequeInfo.FiscalDocumentSign,
+                FiscalDocumentNumber = chequeInfo.FiscalParams.FiscalDocumentNumber.ToString(),
+                FiscalFeatureDocument = chequeInfo.FiscalParams.FiscalDocumentSign,
             };
             model.QrCode = QrGenerator.Generated(
                 $"s={model.TotalPay}&fn={model.FiscalStorageRegisterNumber}&i={model.FiscalDocumentNumber}&fp={model.FiscalFeatureDocument}&n=4343");

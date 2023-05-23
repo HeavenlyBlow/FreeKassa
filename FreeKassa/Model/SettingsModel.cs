@@ -1,4 +1,5 @@
 ﻿using System;
+using Newtonsoft.Json;
 
 namespace FreeKassa.Model
 {
@@ -10,6 +11,8 @@ namespace FreeKassa.Model
         public Printer Printer { get; set; }
         public CashValidatorModel CashValidator { get; set; }
         public Sberbank Sberbank { get; set; }
+        
+        [JsonProperty("InpasConsolePath")]
         public InpasConsolePath InpasConsole { get; set; }
     }
 

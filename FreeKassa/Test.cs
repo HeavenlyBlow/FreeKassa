@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using AtolDriver;
 using AtolDriver.Models;
 using AtolDriver.Utils;
@@ -18,6 +21,7 @@ using FreeKassa.Model.PrinitngDocumensModel;
 using FreeKassa.Payment.Pinpad.Inpas;
 using FreeKassa.Payment.Pinpad.Sberbank;
 using FreeKassa.Printer.FormForPrinting;
+using FreeKassa.Repository;
 using FreeKassa.Utils;
 using Newtonsoft.Json.Linq;
 
@@ -28,75 +32,31 @@ namespace FreeKassa
     public class Test
     {
 
+        
+        
+       
 
         public static void Main(string[] args)
         {
-
-
-            var kassa = new KassaManager();
-            // kassa.StartKassa();
-
-            kassa.Successfully += cheque =>
+            
+            
+            
+            var repository = new MarkedCodeRepository();
+            
+            var a = repository.MarkedWorker<bool>(Work.Save, "0104603934000793215laHIYNedHtxQ93+Ut3");
+            var b = repository.MarkedWorker<bool>(Work.Save, codeList: new List<string>()
             {
-
-                kassa.PrintCheque(cheque);
-
-            };
-            
-            kassa.SuccessfullyPayment += () =>
-            {
-                Console.WriteLine("+");
-            };
+                "0104603934000793215laHIYNfdHtxQ93+Ut3",
+                "0104603934000793215laHIYNfdHtxQ93+Ut351235",
+                "0104603934000793215laHIYNfdHtxQ93+Ut32346234"
+            });
             
             
-            kassa.StartPayment(PaymentType.InpasConsole, 100);
-            
-
-            // kassa.BarcodeScanner.Successfully += code =>
-            // {
-            //     
-            //     kassa.BarcodeScanner.StopReading();
-            //     
-            //     
-            //     var basket = new List<BasketModel>()
-            //     {
-            //         new BasketModel()
-            //         {
-            //             Cost = 150,
-            //             Name = "Мин.вода Байкал глубинная 0,85л н/г ",
-            //             Ims = code,
-            //             MeasurementUnit = MeasurementUnitEnum.Piece,
-            //             PaymentObject = PaymentObjectEnum.Commodity,
-            //             Quantity = 1,
-            //             TaxType = TaxTypeEnum.No
-            //         }
-            //     };
-            //     
-            //     
-            //     kassa.RegisterReceipt(
-            //
-            //         new ReceiptModel()
-            //         {
-            //             isElectron = true,
-            //             TaxationType = TaxationTypeEnum.UsnIncomeOutcome,
-            //             TypeReceipt = TypeReceipt.Sell
-            //         },
-            //
-            //         basket,
-            //
-            //         new PayModel()
-            //         {
-            //             PaymentType = PaymentTypeEnum.Electronically,
-            //             Sum = 150
-            //         }
-            //     );
-            //     
-            // };
+            var list = repository.MarkedWorker<List<string>>(Work.Read);
+            repository.MarkedWorker<bool>(Work.Delete, "12312312312");
             
             
-            // kassa.BarcodeScanner.StartReading();
-
-            Console.ReadLine();
+            
 
         }
     }

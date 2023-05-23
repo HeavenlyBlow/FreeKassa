@@ -22,7 +22,7 @@ namespace FreeKassa
     public class KassaManager : IDisposable
     {
 
-        #region Header
+        #region Handler
 
         private object _locker = new object();
         private KKTManager _kktManager;
@@ -37,8 +37,9 @@ namespace FreeKassa
         private SettingsModel _settings;
         
         public ScannerManager BarcodeScanner { get; set; }
-        public delegate void Payments();
-        public delegate void Receipt(ChequeFormModel cheque);
+        public delegate void PaymentsHandler();
+        public delegate void ShiftsHandler();
+        public delegate void ReceiptHandler(ChequeFormModel cheque);
         
         public KassaManager()
         {
@@ -66,10 +67,36 @@ namespace FreeKassa
         #region Event
 
         // public event EventHandler SuccessfullyReceipt;
-        public event Receipt Successfully;
-        public event Receipt Error;
-        public event Payments SuccessfullyPayment;
-        public event Payments ErrorPayment;
+        public event ReceiptHandler ReceiptSuccessfully;
+        public event ReceiptHandler ReceiptError;
+        public event PaymentsHandler SuccessfullyPayment;
+        public event PaymentsHandler ErrorPayment;
+        public event ShiftsHandler OpenShifts;
+        public event ShiftsHandler CloseShifts;
+        
+        protected virtual void OnOpenShifts()
+        {
+            OpenShifts?.Invoke();
+        }
+        
+        protected virtual void OnCloseShifts()
+        {
+            CloseShifts?.Invoke();
+        }
+
+        private void KKTEvent(bool isSubscribe)
+        {
+            if (isSubscribe)
+            {
+                _kktManager.OpenShifts += OnOpenShifts;
+                _kktManager.ShiftsClose += OnCloseShifts;
+                
+                return;
+            }
+            
+            _kktManager.OpenShifts -= OnOpenShifts;
+            _kktManager.ShiftsClose -= OnCloseShifts;
+        }
 
         #endregion
 
@@ -98,6 +125,8 @@ namespace FreeKassa
             {
                 BarcodeScanner = new ScannerManager(_settings.BarcodeScanner.SerialPort, _settings.BarcodeScanner.BaundRate, _simpleLogger);
             }
+            
+            KKTEvent(true);
             _simpleLogger.Info("Касса запущена");
             return true;
         }
@@ -107,6 +136,7 @@ namespace FreeKassa
             if(File.Exists("LastOpenShifts.txt")) return;
             File.Create("LastOpenShifts.txt");
         }
+        
 
         #endregion
 
@@ -137,12 +167,12 @@ namespace FreeKassa
 
                 if (data == null)
                 {
-                    Error?.Invoke(null);
+                    ReceiptError?.Invoke(null);
                     
                     return;
                 }
                 
-                Successfully?.Invoke(data);
+                ReceiptSuccessfully?.Invoke(data);
             }));
             
         }
@@ -257,6 +287,7 @@ namespace FreeKassa
 
         public void Dispose()
         {
+            KKTEvent(false);
             _kktManager?.Dispose();
             if(_paymentBase != null) 
                 Unsubscribe();
@@ -265,7 +296,8 @@ namespace FreeKassa
         #endregion
 
         #endregion
-        
+
+
         
     }
 }
