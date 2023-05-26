@@ -28,7 +28,9 @@ namespace FreeKassa.Repository
                 switch (work)
                 {
                     case Work.Save:
-                        
+
+                        var readStr = File.ReadAllText(path);
+
                         var str = new StringBuilder();
 
                         if (codeList != null && codeList.Count != 0)
@@ -44,7 +46,7 @@ namespace FreeKassa.Repository
                             str.Append(code);
                         }
                         
-                        File.WriteAllText(path, str.ToString());
+                        File.WriteAllText(path,  readStr + str.ToString());
 
                         return (T)(object)true;
 
