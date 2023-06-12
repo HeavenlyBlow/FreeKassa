@@ -30,6 +30,7 @@ namespace FreeKassa.KKT
         private bool _manualShiftManagement;
         private readonly PrinterManager _printerManager;
         private readonly SimpleLogger _logger;
+        private int _receiptResending;
         private MarkedCodeRepository _repository;
         public delegate void ShiftsHandler();
         public event ShiftsHandler OpenShifts;
@@ -41,7 +42,7 @@ namespace FreeKassa.KKT
             _logger = logger;
             _manualShiftManagement = manualShiftManagement;
             _printerManager = printerManager;
-            if (!ValidationKktSettings.Check(kktSettings))
+            if (!Validation.CheckSetting(kktSettings))
             {
                 
                 _logger.Fatal("SettingsExceptions: Отсутсвует имя кассира или включены обра режима смеен");
@@ -53,7 +54,7 @@ namespace FreeKassa.KKT
         public KKTManager(Model.KKT kktSettings, SimpleLogger logger)
         {
             _logger = logger;
-            if (!ValidationKktSettings.Check(kktSettings))
+            if (!Validation.CheckSetting(kktSettings))
             {
                 _logger.Fatal("SettingsExceptions: Отсутсвует имя кассира или включены обра режима смеен");
                 throw new SettingsExceptions("Отсутсвует имя кассира или включены обра режима смеен");
@@ -110,11 +111,21 @@ namespace FreeKassa.KKT
             var dateNow = DateTime.Now;
             UpdateModel();
             var status = _atolInterface.GetShiftStatus();
+
+            if (status is null)
+            {
+                var errorMessage = _atolInterface.ReadError();
+                _logger.Fatal($"GetShitStatus: {errorMessage}");
+                
+                //TODO При возниковении ошибки сделана заглушка так как не понятно как отпрабатывать
+                return;
+            }
+            
             if (date.Value.Day == dateNow.Day && date.Value.Month == dateNow.Month)
             {
                 if (dateNow >= _kktModel.Shift.WorkKWithBreaks.OpeningTime && dateNow < _kktModel.Shift.WorkKWithBreaks.CloseTime)
                 {
-                    if (status == 0)
+                    if (status.Shift.State.Equals("closed"))
                     {
                         StartShifts();
                         return;
@@ -122,7 +133,7 @@ namespace FreeKassa.KKT
                 }
                 else
                 {
-                    if ((status == 1) || (status == 2)) CloseShifts();
+                    if ((status.Shift.State.Equals("opened")) || (status.Shift.State.Equals("expired"))) CloseShifts();
                     return;
                 }
             }
@@ -143,34 +154,51 @@ namespace FreeKassa.KKT
             }
             var dateNow = DateTime.Now;
             UpdateModel();
-            var status = _atolInterface.GetShiftStatus();
             
-            if (status == 1)
+            var status = _atolInterface.GetShiftStatus();
+
+            if (status is null)
+            {
+                var errorMessage = _atolInterface.ReadError();
+                _logger.Fatal($"GetShitStatus: {errorMessage}");
+                
+                //TODO При возниковении ошибки сделана заглушка так как не понятно как отпрабатывать
+                return;
+            }
+            
+            if (status.Shift.State.Equals("opened"))
             {
                 if (dateNow.Day == date.Value.Day) return;
+
+                if (dateNow < _kktModel.Shift.NonStopWork.ShiftChangeTime) return;
                 
-                if (dateNow >= _kktModel.Shift.NonStopWork.ShiftChangeTime)
-                {
-                    _logger.Info($"NonStopWorkShiftsControl: Перезапуск смены:\n Cтатус смены: {status} \n Поседняя дата: {date} \n Сейчас: {dateNow} \n Дата закрытия: {_kktModel.Shift.NonStopWork.ShiftChangeTime}");
-                    StartShifts();
-                }
-                
+                _logger.Info($"NonStopWorkShiftsControl: Перезапуск смены:\n Cтатус смены: {status.Shift.State} \n Поседняя дата: {date} \n Сейчас: {dateNow} \n Дата закрытия: {_kktModel.Shift.NonStopWork.ShiftChangeTime}");
+                StartShifts();
+
                 return;
             }
 
-            if (status is 2 or 0)
-            {
-                _logger.Info($"NonStopWorkShiftsControl: Запуск смены из-за статуса смены ккт : {status}");
-                StartShifts();
-            }
+            if (!status.Shift.State.Equals("closed") && !status.Shift.State.Equals("expired")) return;
+            
+            _logger.Info($"NonStopWorkShiftsControl: Запуск смены из-за статуса смены ккт : {status.Shift.State}");
+            StartShifts();
         }
         private bool StartShifts()
         {
             var status = _atolInterface.GetShiftStatus();
             
-            if (status >= 1)
+            if (status is null)
             {
-                _logger.Info($"StartShifts: Закрытие смены из-за статуса смены ккт : {status}");
+                var errorMessage = _atolInterface.ReadError();
+                _logger.Fatal($"GetShitStatus: {errorMessage}");
+                
+                //TODO При возниковении ошибки сделана заглушка так как не понятно как отпрабатывать
+                return false;
+            }
+            
+            if (!status.Shift.State.Equals("opened"))
+            {
+                _logger.Info($"StartShifts: Закрытие смены из-за статуса смены ккт : {status.Shift.State}");
                 CloseShifts();
             }
             
@@ -211,7 +239,7 @@ namespace FreeKassa.KKT
         {
             var num = 0; 
             var tm = new TimerCallback(CheckTime); 
-            _timer = new Timer(tm,num, 11000, 50000);
+            _timer = new Timer(tm,num, 60000, 30000);
         }
         private void CheckTime(object source)
         {
@@ -267,14 +295,13 @@ namespace FreeKassa.KKT
 
         public void OpenReceipt(ReceiptModel receiptType, ClientInfo clientInfo = null)
         {
-            var status = _atolInterface.GetShiftStatus();
-            
-            if (status != 1)
-            {
-                _logger.Fatal($"OpenReceipt: Чек не может быть открыт так как статус смены {status}");
-                throw new ShiftException("Смена не открыта!");
-            }
-            
+            // var status = _atolInterface.GetShiftStatus();
+            //
+            // if (!status.State.Equals("opened"))
+            // {
+            //     _logger.Fatal($"OpenReceipt: Чек не может быть открыт так как статус смены {status}");
+            // }
+            //
             _atolInterface.OpenReceipt(receiptType.isElectron,receiptType.TypeReceipt, receiptType.TaxationType, clientInfo);
         }
         public void AddProduct(BasketModel product)
@@ -317,9 +344,7 @@ namespace FreeKassa.KKT
                 var error = _atolInterface.ReadError();
                 _logger.Fatal($"CloseReceipt: Ошибка закрытия чека {error}");
                 
-                throw new ChequeException(_atolInterface.ReadError());
             }
-            
             
             data = DataAboutChequeReceipt(pay, basketModels, receiptModel, chequeInfo);
             
@@ -327,12 +352,12 @@ namespace FreeKassa.KKT
             {
                 _logger.Error($"CloseReceipt: Не хватает данных для печати");
                 
-                throw new ChequeException("Не хватает данных для печати");
             }
             
             if(_printerManager != null && !receiptModel.isElectron) _printerManager.Print(data);
         }
-
+        
+        
         /// <summary>
         /// Проверка ошибок проверки маркировки
         /// </summary>

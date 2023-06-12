@@ -71,6 +71,7 @@ namespace FreeKassa
         public event ReceiptHandler ReceiptError;
         public event PaymentsHandler SuccessfullyPayment;
         public event PaymentsHandler ErrorPayment;
+        public event PaymentsHandler SuccessfullyRefound;
         public event ShiftsHandler OpenShifts;
         public event ShiftsHandler CloseShifts;
         
@@ -222,6 +223,35 @@ namespace FreeKassa
             }
         }
 
+        /// <summary>
+        /// Возврат средств
+        /// </summary>
+        /// <param name="paymentType">Тип оплаты</param>
+        /// <param name="sum">Сумма к возврату</param>
+        public void RefoundPayment(PaymentType paymentType, long sum)
+        {
+            switch (paymentType)
+            {
+                case PaymentType.Sberbank:
+
+                    var sber = new SberbankPayment(_simpleLogger, _settings.Sberbank);
+                    _paymentBase = sber;
+                    sber.SuccessfulyRefound += OnSuccessfulyRefound;
+                    sber.Error += PaymentOnError;
+                    sber.RefoundPayment(sum);
+                    break;
+                
+                default:
+                    _simpleLogger.Info("Не верно задано оборудование для оплаты");
+                    break;
+            }
+        }
+
+        private void OnSuccessfulyRefound()
+        {
+            SuccessfullyRefound?.Invoke();
+        }
+
         private void PaymentOnError()
         {
             Unsubscribe();
@@ -237,6 +267,12 @@ namespace FreeKassa
         private void Unsubscribe()
         {
             _paymentBase.Successfully -= PaymentOnSuccessfully;
+            _paymentBase.Error -= PaymentOnError;
+        }
+
+        private void UnsubscribeRefound()
+        {
+            _paymentBase.Successfully -= OnSuccessfulyRefound;
             _paymentBase.Error -= PaymentOnError;
         }
 

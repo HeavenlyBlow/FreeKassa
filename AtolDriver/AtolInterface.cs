@@ -259,11 +259,22 @@ namespace AtolDriver
         /// Состояние смены
         /// </summary>
         /// <returns>0 - закрыта, 1 - октрыта</returns>
-        public int GetShiftStatus()
+        public ShiftStatus? GetShiftStatus()
         {
-            _fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
-            _fptr.queryData();
-            return (int)_fptr.getParamInt(Constants.LIBFPTR_PARAM_SHIFT_STATE);
+            SendJson(new CloseShift
+            {
+                Type = "getShiftStatus"
+            }, out var answer);
+        
+            if (answer.Code == -1) return null;
+            
+            object? jobj;
+
+            jobj = JsonConvert.DeserializeObject<ShiftStatus>(answer.Json);
+
+            if (jobj == null) return null;
+            
+            return (ShiftStatus)jobj;
         }
         
         /// <summary>

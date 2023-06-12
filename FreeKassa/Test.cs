@@ -39,30 +39,33 @@ namespace FreeKassa
         public static void Main(string[] args)
         {
             
-            
-            
-            var repository = new MarkedCodeRepository();
-            
-            var a = repository.MarkedWorker<bool>(Work.Save, "0104603934000793215laHIYNedHtxQ93+Ut3");
-            var b = repository.MarkedWorker<bool>(Work.Save, codeList: new List<string>()
-            {
-                "0104603934000793215laHIYNfdHtxQ93+Ut3",
-                "0104603934000793215laHIYNfdHtxQ93+Ut351235",
-                "0104603934000793215laHIYNfdHtxQ93+Ut32346234"
-            });
-            
-            
-            var list = repository.MarkedWorker<List<string>>(Work.Read);
-            repository.MarkedWorker<bool>(Work.Delete, "12312312312");
+            var k = new KassaManager();
+            k.StartKassa();
             
             
             
+            
+            // var repository = new MarkedCodeRepository();
+            //
+            // var a = repository.MarkedWorker<bool>(Work.Save, "0104603934000793215laHIYNedHtxQ93+Ut3");
+            // var b = repository.MarkedWorker<bool>(Work.Save, codeList: new List<string>()
+            // {
+            //     "0104603934000793215laHIYNfdHtxQ93+Ut3",
+            //     "0104603934000793215laHIYNfdHtxQ93+Ut351235",
+            //     "0104603934000793215laHIYNfdHtxQ93+Ut32346234"
+            // });
+            //
+            //
+            // var list = repository.MarkedWorker<List<string>>(Work.Read);
+            // repository.MarkedWorker<bool>(Work.Delete, "12312312312");
+            //
+            //
+            //
 
         }
     }
     
-    //         var k = new KassaManager();
-    //         k.StartKassa();
+    
     //
     //
     //         k.Successfully += delegate(ChequeFormModel cheque)

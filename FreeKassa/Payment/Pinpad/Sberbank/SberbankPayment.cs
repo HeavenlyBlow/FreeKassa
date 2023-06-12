@@ -22,7 +22,63 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
         {
             Task.Run((() => MakePayment(amount)));
         }
-        
+
+        public void RefoundPayment(long amount)
+        {
+            Task.Run((() => Refound(amount)));
+        }
+
+        private void Refound(long amount)
+        {
+            _logger.Info("Запуск возврата Сбербанк");
+            var directorySber = _settings.Directory;
+            Process.Start($@"{directorySber}\loadparm.exe", "13 " + amount);
+            var allFilesLog = Directory.GetFiles(directorySber, "*.log").Where(f => f.Contains("sbkernel") && f.EndsWith(".log"));
+            allFilesLog.ToList().ForEach(File.Delete);
+            while (true)
+            {
+                Task.Delay(500).Wait();
+                var file = Directory.GetFiles(directorySber, "*.log").FirstOrDefault(f => f.Contains("sbkernel") && f.EndsWith(".log"));
+                
+                if(file == null) 
+                    continue;
+
+                var allTextLog = "";
+                
+                try
+                {
+                    allTextLog = File.ReadAllText(file);
+                }
+                catch (IOException e)
+                {
+                    continue;
+                }
+                
+                if (!allTextLog.Contains("Result  =")) 
+                    continue;
+                
+                var codeResult = Regex.Match(allTextLog, "(?<=Result  = ).*?(?=\n)").Value.Trim();
+                
+                switch (codeResult)
+                {
+                    case "0":
+                    {
+                        _logger.Info("Возврат прошел");
+                        OnSuccessfulyRefound();
+                        
+                        return;
+                    }
+                    
+                    case "2000":
+                        OnError();
+                        
+                        return;
+                }
+                
+                return;
+            }
+        }
+
         private void MakePayment(long amount)
         {
             _logger.Info("Запуск оплаты Сбербанк");
