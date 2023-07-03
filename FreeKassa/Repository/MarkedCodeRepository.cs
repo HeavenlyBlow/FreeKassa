@@ -4,72 +4,69 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using AtolDriver.Models;
 using Microsoft.Extensions.Primitives;
 
 namespace FreeKassa.Repository
 {
     public class MarkedCodeRepository
     {
-        private object _locker = new();
-        
+
+        private const string _path = @"Marked\notSendMarked.txt";
+
         public MarkedCodeRepository()
         {
             InitDirectory();
         }
-
         
-        public T MarkedWorker<T> (Work work ,string code = "",List<string> codeList = null) where T : new()
+        public void Delete(string mark)
         {
-            lock (_locker)
-            {
+            var collection = File.ReadAllLines(_path).Where(c => !c.Equals(mark)).ToList();
+            File.WriteAllLines(_path, collection);
+        }
 
-                var path = @"Marked\notSendMarked.txt";
-                
-                switch (work)
+        public List<MarkingCheckModel> Read()
+        {
+            var list = File.ReadAllLines(_path).ToList();
+
+            if (list.Count == 0)
+                return new List<MarkingCheckModel>();
+
+            var answer = new List<MarkingCheckModel>();
+            
+            list.ForEach(c => answer.Add(
+                new MarkingCheckModel()
                 {
-                    case Work.Save:
+                    CheckIter = 0,
+                    Marking = c
+                }));
 
-                        var readStr = File.ReadAllText(path);
+            return answer;
+        }
 
-                        var str = new StringBuilder();
+        public void Save(string code = "" ,List<string> marks = null)
+        {
+            var readAllText = File.ReadAllText(_path);
+            var str = new StringBuilder();
 
-                        if (codeList != null && codeList.Count != 0)
-                        {
-                            foreach (var c in codeList)
-                            {
-                                str.Append($"{c}\n");
-                            }
-                        }
-
-                        if (code != "")
-                        {
-                            str.Append(code);
-                        }
-                        
-                        File.WriteAllText(path,  readStr + str.ToString());
-
-                        return (T)(object)true;
-
-                    case Work.Read:
-                        
-                        return (T)(object)File.ReadAllLines(path).ToList();
-                        
-                    case Work.Delete:
-                        
-                        var re = File.ReadAllLines(path).Where(s => !s.Contains(code));
-                        File.WriteAllLines(path,re);
-                        break;
-                        
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(work), work, null);
+            if (marks != null && marks.Count != 0)
+            {
+                foreach (var c in marks)
+                {
+                    str.Append($"{c}\n");
                 }
             }
-
-            return new T();
-        }
             
-        
-        private void InitDirectory()
+            if (code != "")
+            {
+                str.Append(code);
+            }
+                        
+            File.WriteAllText(_path,  readAllText + str.ToString());
+        }
+
+
+        private static void InitDirectory()
         {
             if (Directory.Exists("Marked")) return;
             
@@ -77,12 +74,5 @@ namespace FreeKassa.Repository
             var file = File.Create(@$"{path}\notSendMarked.txt");
             file.Close();
         }
-    }
-
-    public enum Work
-    {
-        Save,
-        Read,
-        Delete
     }
 }

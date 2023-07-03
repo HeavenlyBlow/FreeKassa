@@ -7,13 +7,15 @@ using FreeKassa.Utils;
 
 namespace FreeKassa.Payment.Pinpad.Sberbank
 {
-    public class SberbankPayment: PaymentBase
+    public class SberbankPayment
    {
        private readonly SimpleLogger _logger;
-        private readonly Model.Sberbank _settings;
+       private readonly Model.Sberbank _settings;
+       private readonly NotificationManager _notification;
         
-        public SberbankPayment(SimpleLogger logger, Model.Sberbank settings)
+        public SberbankPayment(NotificationManager notification ,SimpleLogger logger, Model.Sberbank settings)
         {
+            _notification = notification;
             _logger = logger;
             _settings = settings;
         }
@@ -28,7 +30,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
             Task.Run((() => Refound(amount)));
         }
 
-        private void Refound(long amount)
+        private async void Refound(long amount)
         {
             _logger.Info("Запуск возврата Сбербанк");
             var directorySber = _settings.Directory;
@@ -37,7 +39,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
             allFilesLog.ToList().ForEach(File.Delete);
             while (true)
             {
-                Task.Delay(500).Wait();
+                await Task.Delay(500);
                 var file = Directory.GetFiles(directorySber, "*.log").FirstOrDefault(f => f.Contains("sbkernel") && f.EndsWith(".log"));
                 
                 if(file == null) 
@@ -64,13 +66,13 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
                     case "0":
                     {
                         _logger.Info("Возврат прошел");
-                        OnSuccessfulyRefound();
+                        _notification.OnPaymentSuccessfully();
                         
                         return;
                     }
                     
                     case "2000":
-                        OnError();
+                        _notification.OnPaymentError();
                         
                         return;
                 }
@@ -79,7 +81,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
             }
         }
 
-        private void MakePayment(long amount)
+        private async void MakePayment(long amount)
         {
             _logger.Info("Запуск оплаты Сбербанк");
             var directorySber = _settings.Directory;
@@ -88,12 +90,12 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
             allFilesLog.ToList().ForEach(File.Delete);
             while (true)
             {
-                Task.Delay(500).Wait();
+                await Task.Delay(500);
                 var file = Directory.GetFiles(directorySber, "*.log").FirstOrDefault(f => f.Contains("sbkernel") && f.EndsWith(".log"));
                 
                 if(file == null) 
                     continue;
-
+            
                 var allTextLog = "";
                 
                 try
@@ -115,21 +117,25 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
                     case "0":
                     {
                         _logger.Info("Оплата прошла");
-                        OnSuccessfully();
+                        _notification.OnPaymentSuccessfully();
                         
                         return;
                     }
-                    
+            
                     case "2000":
-                        OnError();
-                        
+                    {
+                        _logger.Info("Отмена оплаты сбербанк");
+                        _notification.OnPaymentError();
+            
                         return;
-                    
+                    }
                     case "4134":
+            
+                        var res = await RestartShift();
                         
-                        if (!RestartShift())
+                        if (!res)
                         {
-                            OnError();
+                            _notification.OnPaymentError();
                             
                             return;
                         }
@@ -143,7 +149,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
             }
         }
         
-        private bool RestartShift()
+        private async Task<bool> RestartShift()
         {
             _logger.Info("Запуск пересменки сбербанк");
             var directorySber = _settings.Directory;
@@ -152,7 +158,7 @@ namespace FreeKassa.Payment.Pinpad.Sberbank
             allFilesLog.ToList().ForEach(File.Delete);
             while (true)
             {
-                Task.Delay(500).Wait();
+                await Task.Delay(500);
                 var file = Directory.GetFiles(directorySber, "*.log").FirstOrDefault(f => f.Contains("sbkernel") && f.EndsWith(".log"));
                 
                 if(file == null) 

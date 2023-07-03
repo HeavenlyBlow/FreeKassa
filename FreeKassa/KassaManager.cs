@@ -10,7 +10,6 @@ using FreeKassa.Extensions.KassaManagerExceptions;
 using FreeKassa.KKT;
 using FreeKassa.Model;
 using FreeKassa.Model.FiscalDocumentsModel;
-using FreeKassa.Payment;
 using FreeKassa.Payment.Cash;
 using FreeKassa.Payment.Pinpad.Inpas;
 using FreeKassa.Payment.Pinpad.Sberbank;
@@ -24,25 +23,17 @@ namespace FreeKassa
 
         #region Handler
 
-        private object _locker = new object();
-        private KKTManager _kktManager;
+        private KktManager _kktManager;
         private PrinterManager _printerManager;
         private CashValidator _validator;
-        private PaymentBase _paymentBase;
         //TODO задел на то что надо будет самому управлять сменой
-        private bool _manualShiftManagement = false;
         private EPSON _vkp80Ii;
-        private int _onKktPrinterManagement;
-        private readonly SimpleLogger _simpleLogger;
+        private SimpleLogger _simpleLogger;
         private SettingsModel _settings;
-        
-        public ScannerManager BarcodeScanner { get; set; }
-        public delegate void PaymentsHandler();
-        public delegate void ShiftsHandler();
-        public delegate void ReceiptHandler(ChequeFormModel cheque);
         
         public KassaManager()
         {
+            NotificationManager = new NotificationManager();
             _simpleLogger = new SimpleLogger();
             _settings = ConfigHelper.GetSettings();
             CreateLastShiftsFile();
@@ -62,45 +53,11 @@ namespace FreeKassa
             get => _validator;
         }
         
+        public ScannerManager BarcodeScanner { get; set; }
+        public NotificationManager NotificationManager { get; set; }
+        
         #endregion
-        
-        #region Event
-
-        // public event EventHandler SuccessfullyReceipt;
-        public event ReceiptHandler ReceiptSuccessfully;
-        public event ReceiptHandler ReceiptError;
-        public event PaymentsHandler SuccessfullyPayment;
-        public event PaymentsHandler ErrorPayment;
-        public event PaymentsHandler SuccessfullyRefound;
-        public event ShiftsHandler OpenShifts;
-        public event ShiftsHandler CloseShifts;
-        
-        protected virtual void OnOpenShifts()
-        {
-            OpenShifts?.Invoke();
-        }
-        
-        protected virtual void OnCloseShifts()
-        {
-            CloseShifts?.Invoke();
-        }
-
-        private void KKTEvent(bool isSubscribe)
-        {
-            if (isSubscribe)
-            {
-                _kktManager.OpenShifts += OnOpenShifts;
-                _kktManager.ShiftsClose += OnCloseShifts;
-                
-                return;
-            }
-            
-            _kktManager.OpenShifts -= OnOpenShifts;
-            _kktManager.ShiftsClose -= OnCloseShifts;
-        }
-
-        #endregion
-
+  
         #region Processing
 
         #region Base
@@ -111,15 +68,16 @@ namespace FreeKassa
         /// <returns></returns>
         public bool StartKassa()
         {
+            
             if (_settings.KKT.PrinterManagement == 0)
             {
                 _vkp80Ii = new EPSON();
                 _printerManager = new PrinterManager(_vkp80Ii, _settings.Printer);
-                _kktManager = new KKTManager(_manualShiftManagement, _printerManager, _settings.KKT, _simpleLogger);
+                _kktManager = new KktManager(NotificationManager, _printerManager, _settings.KKT, _simpleLogger);
             }
             else
             {
-                _kktManager = new KKTManager(_settings.KKT, _simpleLogger);
+                _kktManager = new KktManager(NotificationManager,_settings.KKT, _simpleLogger);
             }
 
             if (_settings.BarcodeScanner.IsEnable)
@@ -127,7 +85,6 @@ namespace FreeKassa
                 BarcodeScanner = new ScannerManager(_settings.BarcodeScanner.SerialPort, _settings.BarcodeScanner.BaundRate, _simpleLogger);
             }
             
-            KKTEvent(true);
             _simpleLogger.Info("Касса запущена");
             return true;
         }
@@ -154,7 +111,7 @@ namespace FreeKassa
         public void RegisterReceipt(ReceiptModel receiptType, 
             List<BasketModel> basket, PayModel pay, ClientInfo clientInfo = null)
         {
-            Task.Run((() =>
+            Task.Run((async () =>
             {
                 _kktManager.OpenReceipt(receiptType, clientInfo);
         
@@ -164,16 +121,16 @@ namespace FreeKassa
                 }
                 
                 _kktManager.AddPay(pay);
-                _kktManager.CloseReceipt(pay, basket, receiptType, out var data);
+                var data = await _kktManager.CloseReceipt(pay, basket, receiptType);
 
                 if (data == null)
                 {
-                    ReceiptError?.Invoke(null);
+                    NotificationManager.OnReceiptError(null);
                     
                     return;
                 }
                 
-                ReceiptSuccessfully?.Invoke(data);
+                NotificationManager.OnReceiptSuccessfully(data);
             }));
             
         }
@@ -192,28 +149,19 @@ namespace FreeKassa
             switch (paymentType)
             {
                 case PaymentType.Sberbank:
-
-                    var sber = new SberbankPayment(_simpleLogger, _settings.Sberbank);
-                    _paymentBase = sber;
-                    sber.Successfully += PaymentOnSuccessfully;
-                    sber.Error += PaymentOnError;
+                    
+                    var sber = new SberbankPayment(NotificationManager,_simpleLogger, _settings.Sberbank);
                     sber.StartPayment(sum);
                     break;
-
+        
                 case PaymentType.CashValidator:
-
-                    var cash = new CashValidator(_simpleLogger);
-                    _paymentBase = cash;
-                    cash.Successfully += PaymentOnSuccessfully;
-                    cash.Error += PaymentOnError;
+        
+                    var cash = new CashValidator(NotificationManager,_simpleLogger);
                     cash.StartWork((int)sum);
                     break;
                 
                 case PaymentType.InpasConsole:
-                    var inpas = new InpasConsolPayment(_simpleLogger, _settings.InpasConsole);
-                    _paymentBase = inpas;
-                    inpas.Successfully += PaymentOnSuccessfully;
-                    inpas.Error += PaymentOnError;
+                    var inpas = new InpasConsolPayment(NotificationManager,_simpleLogger, _settings.InpasConsole);
                     inpas.StartPayment(sum);
                     break;
                 
@@ -233,11 +181,8 @@ namespace FreeKassa
             switch (paymentType)
             {
                 case PaymentType.Sberbank:
-
-                    var sber = new SberbankPayment(_simpleLogger, _settings.Sberbank);
-                    _paymentBase = sber;
-                    sber.SuccessfulyRefound += OnSuccessfulyRefound;
-                    sber.Error += PaymentOnError;
+        
+                    var sber = new SberbankPayment(NotificationManager,_simpleLogger, _settings.Sberbank);
                     sber.RefoundPayment(sum);
                     break;
                 
@@ -246,36 +191,7 @@ namespace FreeKassa
                     break;
             }
         }
-
-        private void OnSuccessfulyRefound()
-        {
-            SuccessfullyRefound?.Invoke();
-        }
-
-        private void PaymentOnError()
-        {
-            Unsubscribe();
-            ErrorPayment?.Invoke();
-        }
-
-        private void PaymentOnSuccessfully()
-        {
-            Unsubscribe();
-            SuccessfullyPayment?.Invoke();
-        }
-
-        private void Unsubscribe()
-        {
-            _paymentBase.Successfully -= PaymentOnSuccessfully;
-            _paymentBase.Error -= PaymentOnError;
-        }
-
-        private void UnsubscribeRefound()
-        {
-            _paymentBase.Successfully -= OnSuccessfulyRefound;
-            _paymentBase.Error -= PaymentOnError;
-        }
-
+        
         #endregion
 
         #region Printer
@@ -323,17 +239,12 @@ namespace FreeKassa
 
         public void Dispose()
         {
-            KKTEvent(false);
             _kktManager?.Dispose();
-            if(_paymentBase != null) 
-                Unsubscribe();
         }
 
         #endregion
 
         #endregion
 
-
-        
     }
 }

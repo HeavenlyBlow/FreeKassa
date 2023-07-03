@@ -9,13 +9,15 @@ using FreeKassa.Utils;
 
 namespace FreeKassa.Payment.Pinpad.Inpas
 {
-    public class InpasConsolPayment : PaymentBase
+    public class InpasConsolPayment
     {
         private readonly SimpleLogger _logger;
         private readonly Model.InpasConsolePath _settings;
+        private readonly NotificationManager _notification;
         
-        public InpasConsolPayment(SimpleLogger logger, Model.InpasConsolePath settings)
+        public InpasConsolPayment(NotificationManager notification,SimpleLogger logger, Model.InpasConsolePath settings)
         {
+            _notification = notification;
             _logger = logger;
             _settings = settings;
         }
@@ -25,7 +27,7 @@ namespace FreeKassa.Payment.Pinpad.Inpas
             Task.Run((() => MakePayment(amount)));
         }
         
-        private void MakePayment(long amount)
+        private async Task MakePayment(long amount)
         {
             _logger.Info("Запуск оплаты Инпас");
             var directoryInpas = _settings.Directory;
@@ -34,7 +36,7 @@ namespace FreeKassa.Payment.Pinpad.Inpas
             Process.Start($@"{directoryInpas}\DCConsole.exe", $"-p{_settings.SerialPort} -b{_settings.BaundRate} -a{amount} -o1 -c643 -z{_settings.TerminalId}" );
             while (true)
             {
-                Task.Delay(500).Wait();
+                await Task.Delay(500);
                 var file = Directory.GetFiles(directoryInpas, "*.txt").FirstOrDefault(f => f.Contains("result") && f.EndsWith(".txt"));
                 
                 if(file == null) 
@@ -58,7 +60,7 @@ namespace FreeKassa.Payment.Pinpad.Inpas
                     case "ÎÄÎÁÐÅÍÎ":
                     {
                         _logger.Info("Оплата прошла");
-                        OnSuccessfully();
+                        _notification.OnPaymentSuccessfully();
                         
                         break;
                     }
@@ -66,14 +68,14 @@ namespace FreeKassa.Payment.Pinpad.Inpas
                     case "ÎÏÅÐÀÖÈß ÏÐÅÐÂÀÍÀ":
                     {
                         _logger.Info("Оплата отменена");
-                        OnError();
+                        _notification.OnPaymentError();
                         
                         break;
                     }
                     
                     default:
                         _logger.Info("Оплата отменена");
-                        OnError();
+                        _notification.OnPaymentError();
                         
                         break;
                 }

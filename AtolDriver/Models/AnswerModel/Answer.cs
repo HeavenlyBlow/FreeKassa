@@ -3,5 +3,5 @@
 public class Answer
 {
     public int Code;
-    public string Json;
+    public string Text;
 }

@@ -7,24 +7,20 @@ using WebSocketSharp;
 
 namespace FreeKassa.Payment.Cash
 {
-    public class CashValidator: PaymentBase
+    public class CashValidator
     {
         
         private string _totalCost;
         private int _contributed;
         private bool _opacity;
+        private readonly NotificationManager _notification;
         private SimpleLogger _logger;
+        
         WebSocket ws = new WebSocket("ws://127.0.0.1:51654/Validator");
-
-        public delegate void Bill(int sum);
-        public new delegate void Payment();
-
-        public new event Payment Successfully;
-        public new event Payment Error;
-        public event Bill Accepted;
-
-        public CashValidator(SimpleLogger logger)
+        
+        public CashValidator(NotificationManager notification,SimpleLogger logger)
         {
+            _notification = notification;
             _logger = logger;
         }
         
@@ -59,7 +55,7 @@ namespace FreeKassa.Payment.Cash
                         if (add > 0)
                         {
                             _logger.Info($"CashValidator: Полученно {add} рублей");
-                            Accepted?.Invoke(add);
+                            _notification.OnAccepted(add);
                         }
                         
                         else
@@ -72,7 +68,7 @@ namespace FreeKassa.Payment.Cash
                         
                         _logger.Info("CashValidator: Конец работы");
                         ws.Close();
-                        Successfully?.Invoke();
+                        _notification.OnPaymentSuccessfully();
                         
                         break;
                     case "Нет соединения с купюроприёмником":
@@ -80,7 +76,7 @@ namespace FreeKassa.Payment.Cash
                         if(ws.IsAlive)
                             ws.Send("Stop");
                         
-                        Error?.Invoke();
+                        _notification.OnPaymentError();
                         _logger.Fatal("CashValidator: Нет соединения с куплюроприемником");
                         
                         break;

@@ -4,7 +4,7 @@ using FreeKassa.Utils;
 
 namespace FreeKassa.Payment.Pinpad.Inpas
 {
-    public class InpasPayment : PaymentBase, IDisposable
+    public class InpasPayment : IDisposable
     {
         private SimpleLogger _logger;
         private DCLink _dcLink;

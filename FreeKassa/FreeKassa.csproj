@@ -3,7 +3,6 @@
     <PropertyGroup>
         <LangVersion>9</LangVersion>
         <TargetFrameworks>net472;net5.0</TargetFrameworks>
-        <OutputType>Exe</OutputType>
     </PropertyGroup>
 
     <ItemGroup>
@@ -20,9 +19,6 @@
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Update="Resources\Images\Logo.jpg">
-        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
-      <None Update="test2.json">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
     </ItemGroup>

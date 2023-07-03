@@ -1,7 +1,6 @@
 using System.Globalization;
 using Atol.Drivers10.Fptr;
 using Newtonsoft.Json;
-using AtolDriver.Models;
 using System.Text;
 using AtolDriver.BaseClass;
 using AtolDriver.Models.AnswerModel;
@@ -15,14 +14,16 @@ namespace AtolDriver
 
         #region Header
 
+        private readonly TaskConveyor _conveyor;
         readonly IFptr _fptr;
         private object _locker = new();
-        Operator _cashier;
+        private Operator _cashier;
         ReceiptBase _receipt;
-        private readonly bool _isMarked; 
+        private readonly bool _isMarked;
 
         public AtolInterface(int port, int speed, bool isMarked)
         {
+            _conveyor = new TaskConveyor(this);
             _isMarked = isMarked;
             _fptr = new Fptr();
             _fptr.setSingleSetting(Constants.LIBFPTR_SETTING_MODEL, Constants.LIBFPTR_MODEL_ATOL_AUTO.ToString());
@@ -38,55 +39,96 @@ namespace AtolDriver
 
         #region Base
 
-        private void SendJson<T>(T request, out Answer answer)
+        internal void SendJson(string request, out Answer answer)
         {
             lock (_locker)
             {
-                _fptr.setParam(Constants.LIBFPTR_PARAM_JSON_DATA, JsonConvert.SerializeObject(request));
+                _fptr.setParam(Constants.LIBFPTR_PARAM_JSON_DATA, request);
                 answer = new Answer()
                 {
                     Code = _fptr.processJson(),
-                    Json = _fptr.getParamString(Constants.LIBFPTR_PARAM_JSON_DATA)
+                    Text = _fptr.getParamString(Constants.LIBFPTR_PARAM_JSON_DATA)
                 };
             }
         }
+
+        private async Task<T?> SendCommandAndDeserialize<T>(TaskBase command, string deserializeToken = "")
+        {
+            var answer = await SendCommand(command);
+            return answer.Code == -1 ? default(T) : DeserializeHelper.Deserialize<T>(answer.Text, deserializeToken);
+        }
+
+        private async Task<Answer> SendCommand(TaskBase command)
+        {
+            _conveyor.ConveyorList.Add(command);
+            return await command.Completion.Task;
+        }
+
         /// <summary>
         /// Открыть соединение
         /// </summary>
         /// <returns></returns>
-        public int OpenConnection()
+        private Answer OpenConnectionCommand() => new Answer() { Code = _fptr.open() };
+
+        public async Task<Answer> OpenConnection() => await SendCommand(new FunctionTask()
         {
-            return _fptr.open();
-        }
-        
+            Priority = 0,
+            Task = OpenConnectionCommand,
+            Completion = new TaskCompletionSource<Answer>()
+        });
+
         /// <summary>
         /// Закрыть соединение
         /// </summary>
         /// <returns></returns>
-        public int CloseConnection()
+        private Answer CloseConnectionCommand() => new Answer() { Code = _fptr.close() };
+
+        public async Task<Answer> CloseConnection() => await SendCommand(new FunctionTask()
         {
-            return _fptr.close();
-        }
-        
+            Priority = 0,
+            Task = CloseConnectionCommand,
+            Completion = new TaskCompletionSource<Answer>()
+        });
+
         /// <summary>
         /// Возвращает последнюю ошибку
         /// </summary>
         /// <returns></returns>
-        public string ReadError()
+        private Answer ReadErrorCommand()
         {
             _fptr.errorCode();
-            return _fptr.errorDescription();
+
+            return new Answer()
+            {
+                Text = _fptr.errorDescription()
+            };
         }
-        
+
+        public async Task<Answer> ReadError() => await SendCommand(new FunctionTask()
+        {
+            Priority = 0,
+            Task = ReadErrorCommand,
+            Completion = new TaskCompletionSource<Answer>()
+        });
+
         /// <summary>
         /// Установка времени ккт
         /// </summary>
-        public void SetDateTime()
+        private Answer SetDateTimeCommand()
         {
             _fptr.setParam(Constants.LIBFPTR_PARAM_DATE_TIME, DateTime.Now);
             _fptr.writeDateTime();
+
+            return new Answer();
         }
-        
+
+        public async Task SetDateTime() => await SendCommand(new FunctionTask()
+        {
+            Priority = 0,
+            Task = SetDateTimeCommand,
+            Completion = new TaskCompletionSource<Answer>()
+        });
+
 
         #endregion
 
@@ -99,8 +141,7 @@ namespace AtolDriver
         /// <param name="typeReceiptEnum">Тип чека</param>
         /// <param name="taxationTypeEnum">Тип налогообложения</param>
         /// <param name="client">Информация о клиенте </param>
-        /// <param name="isMarked">Маркированный чек</param>
-        public void OpenReceipt(bool isElectronicReceipt ,TypeReceipt typeReceiptEnum ,
+        public void OpenReceipt(bool isElectronicReceipt, TypeReceipt typeReceiptEnum,
             TaxationTypeEnum taxationTypeEnum, ClientInfo? client = null)
         {
             _receipt = new ReceiptBase()
@@ -129,7 +170,6 @@ namespace AtolDriver
         /// <param name="measurementUnitEnum">Единицы измерения кол-ва товара</param>
         /// <param name="paymentObjectEnum">Признак предмета расчета</param>
         /// <param name="taxationTypeEnum">Процент налога</param>
-        /// <param name="ims">Код маркировки</param>
         public void AddPosition(string name, double price, double quantity, MeasurementUnitEnum measurementUnitEnum,
             PaymentObjectEnum paymentObjectEnum, TaxTypeEnum taxationTypeEnum)
         {
@@ -144,39 +184,67 @@ namespace AtolDriver
                 Amount = price * quantity,
                 Tax = new Tax { Type = GetTaxTypeEnum(taxationTypeEnum) }
             };
-            
+
             _receipt.Items.Add(item);
         }
 
-        public Marks? ValidateMarks(List<string> marksList)
-        {
-            var model = new ValidateMarksRequest()
+        /// <summary>
+        /// Реализация кодов маркировки ( Только для штучного товара )
+        /// </summary>
+        /// <param name="marks">Код маркировки</param>
+        /// <returns>Информация о маркировки</returns>
+        public async Task<Marks?> ValidateMarks(string marks) => await SendCommandAndDeserialize<Marks?>(
+            new JsonTask() 
             {
-                Timeout = 40000,
-                Type = "validateMarks",
-                Params = new List<Param>()
-
-            };
-
-            foreach (var marked in marksList)
-            {
-                model.Params.Add(new Param()
+                Priority = 3,
+                Task = JsonConvert.SerializeObject(new ValidateMarksRequest()
                 {
-                    Imc = marked,
-                    ImcType = "auto",
-                    ItemEstimatedStatus = "itemPieceSold",
-                    ImcModeProcessing = 0
-                });
-            }
-            
-            SendJson(model, out var answer);
-            
-            if (answer.Code == -1) return null;
-            
-            var jobj = JsonConvert.DeserializeObject<Marks>(answer.Json);
-            
-            return jobj ?? null;
-        }
+                    Timeout = 40000,
+                    Type = "validateMarks",
+                    Params = new List<Param>()
+                    {
+                        new Param()
+                        {
+                            Imc = marks,
+                            ImcType = "auto",
+                            ItemEstimatedStatus = "itemPieceSold",
+                            ImcModeProcessing = 0
+                        }
+                    }
+                }),
+                Completion = new TaskCompletionSource<Answer>()
+            });
+    
+        
+
+    // {
+        //     var model = new ValidateMarksRequest()
+        //     {
+        //         Timeout = 40000,
+        //         Type = "validateMarks",
+        //         Params = new List<Param>()
+        //     };
+        //
+        //     foreach (var marked in marksList)
+        //     {
+        //         model.Params.Add(new Param()
+        //         {
+        //             Imc = marked,
+        //             ImcType = "auto",
+        //             ItemEstimatedStatus = "itemPieceSold",
+        //             ImcModeProcessing = 0
+        //         });
+        //     }
+        //
+        //     return null;
+            // SendJson(model, out var answer);
+            //
+            // if (answer.Code == -1) return null;
+            //
+            // var jobj = JsonConvert.DeserializeObject<Marks>(answer.Json);
+            //
+            // return jobj ?? null;
+        // }
         
         /// <summary>
         /// Зарегестрировать оплату
@@ -196,19 +264,13 @@ namespace AtolDriver
         /// Закрыть чек
         /// </summary>
         /// <returns>Код ошибки</returns>
-        public ChequeInfo? CloseReceipt()
+        public async Task<ChequeInfo?> CloseReceipt() => await SendCommandAndDeserialize<ChequeInfo>(new JsonTask()
         {
-            SendJson(_receipt, out var answer);
-            if (answer.Code == -1) { return null; }
-
-            object? jobj;
-
-            jobj = JsonConvert.DeserializeObject<ChequeInfo>(answer.Json);
-
-            if (jobj == null) return null;
-            
-            return (ChequeInfo)jobj;
-        }
+            Priority = 0,
+            Task = JsonConvert.SerializeObject(_receipt),
+            Completion = new TaskCompletionSource<Answer>()
+        });
+        
         
         /// <summary>
         /// Отмена чека
@@ -219,7 +281,6 @@ namespace AtolDriver
             return _fptr.cancelReceipt();
         }
         
-        
         #endregion
 
         #region Shift
@@ -228,18 +289,13 @@ namespace AtolDriver
         /// Открыть смену
         /// </summary>
         /// <returns>код ошибки</returns>
-        public OpenShiftInfo? OpenShift()
+        public async Task<OpenShiftInfo?> OpenShift() => await SendCommandAndDeserialize<OpenShiftInfo>(new JsonTask()
         {
-            SendJson(new OpenShift
-            {
-                Operator = _cashier,
-            }, out var answer);
-            
-            if (answer.Code == -1) return null;
-            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new OpenShiftInfo(), token: "fiscalParams");
-            if (jobj == null) return null;
-            return (OpenShiftInfo)jobj;
-        }
+            Priority = 0,
+            Task = JsonConvert.SerializeObject(new OpenShift() { Operator = _cashier}),
+            Completion = new TaskCompletionSource<Answer>()
+        }, deserializeToken: "fiscalParams");
+        
         
         /// <summary>
         /// Утсновка оператора на смену
@@ -259,42 +315,26 @@ namespace AtolDriver
         /// Состояние смены
         /// </summary>
         /// <returns>0 - закрыта, 1 - октрыта</returns>
-        public ShiftStatus? GetShiftStatus()
-        {
-            SendJson(new CloseShift
+        public async Task<ShiftStatus?> GetShiftStatus() => 
+            await SendCommandAndDeserialize<ShiftStatus?>(new JsonTask()
             {
-                Type = "getShiftStatus"
-            }, out var answer);
-        
-            if (answer.Code == -1) return null;
-            
-            object? jobj;
-
-            jobj = JsonConvert.DeserializeObject<ShiftStatus>(answer.Json);
-
-            if (jobj == null) return null;
-            
-            return (ShiftStatus)jobj;
-        }
+                Priority = 0,
+                Task = JsonConvert.SerializeObject(new CloseShift() {Type = "getShiftStatus"}),
+                Completion = new TaskCompletionSource<Answer>()
+            });
         
         /// <summary>
         /// Закрыть смену
         /// </summary>
         /// <returns>Код ошибки</returns>
-        public CloseShiftsInfo? CloseShift()
-        {
-            SendJson(new CloseShift
+        public async Task<CloseShiftsInfo?> CloseShift() => 
+            await SendCommandAndDeserialize<CloseShiftsInfo?>(new JsonTask()
             {
-                Type = "closeShift",
-                Operator = _cashier
-            }, out var answer);
+                Priority = 0,
+                Task = JsonConvert.SerializeObject(new CloseShift() {Operator = _cashier, Type = "closeShift"}),
+                Completion = new TaskCompletionSource<Answer>()
+            });
         
-            if (answer.Code == -1) return null;
-            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new CloseShiftsInfo());
-            if (jobj == null) return null;
-            return (CloseShiftsInfo)jobj;
-        }
-
         #endregion
 
         #region Info
@@ -304,7 +344,7 @@ namespace AtolDriver
         /// Проверка связи с сервером ИМС
         /// </summary>
         
-        public ImsStatus PingMarkingServer()
+        private Answer PingMarkingServerCommand()
         {
             _fptr.pingMarkingServer();
 
@@ -315,111 +355,127 @@ namespace AtolDriver
                 if (_fptr.getParamBool(Constants.LIBFPTR_PARAM_CHECK_MARKING_SERVER_READY))
                     break;
             }
-
-            return new ImsStatus()
+            
+            var response =  new ImsStatus()
             {
                 Description = _fptr.getParamString(Constants.LIBFPTR_PARAM_MARKING_SERVER_ERROR_DESCRIPTION),
                 ErrorCode = _fptr.getParamInt(Constants.LIBFPTR_PARAM_MARKING_SERVER_ERROR_CODE),
                 ResponseTime = _fptr.getParamInt(Constants.LIBFPTR_PARAM_MARKING_SERVER_RESPONSE_TIME)
             };
-            
+
+            return new Answer() { Text = JsonConvert.SerializeObject(response) };
         }
+        
+        public async Task<Answer> PingMarkingServer() => await SendCommand(new FunctionTask()
+        {
+            Priority = 3,
+            Task = PingMarkingServerCommand,
+            Completion = new TaskCompletionSource<Answer>()
+        });
+        
+        
 
         /// <summary>
         /// Получить номер последнего документа в ФН
         /// </summary>
         /// <returns></returns>
-        public string GetLastDocumentNumber()
+        private Answer GetLastDocumentNumberCommand()
         {
             _fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
             _fptr.queryData();
-            return $"{_fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_NUMBER)}";
+            return new Answer() { Text = $"{_fptr.getParamInt(Constants.LIBFPTR_PARAM_DOCUMENT_NUMBER)}" };
         }
+        
+        public async Task<Answer> GetLastDocumentNumber() => await SendCommand(new FunctionTask()
+        {
+            Priority = 1,
+            Task = GetLastDocumentNumberCommand,
+            Completion = new TaskCompletionSource<Answer>()
+        });
+        
         
         /// <summary>
         /// Получить версию ффд
         /// </summary>
         /// <returns></returns>
-        public string GetFfdVersion()
+        private Answer GetFfdVersionCommand()
         {
             _fptr.setParam(Constants.LIBFPTR_PARAM_FN_DATA_TYPE, Constants.LIBFPTR_FNDT_FFD_VERSIONS);
             _fptr.fnQueryData();
-            return $"{_fptr.getParamInt(Constants.LIBFPTR_PARAM_FFD_VERSION)}";
+            return new Answer() { Text = $"{_fptr.getParamInt(Constants.LIBFPTR_PARAM_FFD_VERSION)}" };
         }
+        
+        public async Task<Answer> GetFfdVersion() => await SendCommand(new FunctionTask()
+        {
+            Priority = 1,
+            Task = GetFfdVersionCommand,
+            Completion = new TaskCompletionSource<Answer>()
+        });
         
         /// <summary>
         /// Получить серийный номер ккт
         /// </summary>
         /// <returns>Серийный номер</returns>
-        public string GetSerialNumber()
+        private Answer GetSerialNumberCommand()
         {
             _fptr.setParam(Constants.LIBFPTR_PARAM_DATA_TYPE, Constants.LIBFPTR_DT_STATUS);
             _fptr.queryData();
-            return $"{_fptr.getParamInt(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}";
+            return new Answer() { Text = $"{_fptr.getParamInt(Constants.LIBFPTR_PARAM_SERIAL_NUMBER)}"};
         }
+        
+        public async Task<Answer> GetSerialNumber() => await SendCommand(new FunctionTask()
+        {
+            Priority = 1,
+            Task = GetSerialNumberCommand,
+            Completion = new TaskCompletionSource<Answer>()
+        });
         /// <summary>
         /// Сменные итоги
         /// </summary>
         /// <returns></returns>
-        public CountdownStatusInfo? CountdownStatus()
-        {
-            SendJson(new Countdown
+        public async Task<CountdownStatusInfo?> CountdownStatus() => 
+            await SendCommandAndDeserialize<CountdownStatusInfo?>(new JsonTask()
             {
-                Type = "reportOfdExchangeStatus",
-                Operator = _cashier
-            }, out var answer);
-            
-            if (answer.Code == -1) return null;
-            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new CountdownStatusInfo());
-            if (jobj == null) return null;
-            return (CountdownStatusInfo)jobj;
-        }
+                Priority = 1,
+                Task = JsonConvert.SerializeObject(new Countdown() {Operator = _cashier, Type = "reportOfdExchangeStatus"}),
+                Completion = new TaskCompletionSource<Answer>()
+            });
+        
         /// <summary>
         /// Информация о компании
         /// </summary>
         /// <returns></returns>
-        public CompanyInfo? GetCompanyInfo()
-        {
-            SendJson(new Request()
+        public async Task<CompanyInfo?> GetCompanyInfo() => 
+            await SendCommandAndDeserialize<CompanyInfo?>(new JsonTask()
             {
-                Type = "getRegistrationInfo",
-            }, out var answer);
-
-            if (answer.Code == -1) return null;
-            var jobj = DeserializeHelper.Deserialize(answer.Json, model: new CompanyInfo(), token: "organization");
-            if (jobj == null) return null;
-            return (CompanyInfo)jobj;
-        }
+                Priority = 1,
+                Task = JsonConvert.SerializeObject(new Request() {Operator = _cashier, Type = "getRegistrationInfo"}),
+                Completion = new TaskCompletionSource<Answer>()
+            }, deserializeToken: "organization");
+        
         /// <summary>
         /// Инфомация о фискальном накопителе
         /// </summary>
         /// <returns></returns>
-        public FnStatistic? GetFnStatus()
-        {
-            SendJson(new Request()
+        public async Task<FnStatistic?> GetFnStatus() => 
+            await SendCommandAndDeserialize<FnStatistic?>(new JsonTask()
             {
-                Type = "getFnStatus",
-            }, out var answer);
-
-            if (answer.Code == -1) return null;
-            var jobj = JsonConvert.DeserializeObject<FnStatistic>(answer.Json);
-            return jobj ?? null;
-        }
+                Priority = 1,
+                Task = JsonConvert.SerializeObject(new Request() {Type = "getFnStatus"}),
+                Completion = new TaskCompletionSource<Answer>()
+            });
+        
         /// <summary>
         /// Информация о смене
         /// </summary>
         /// <returns></returns>
-        public Shifts? GetShiftsTotal()
-        {
-            SendJson(new Request()
+        public async Task<Shifts?> GetShiftsTotal() => 
+            await SendCommandAndDeserialize<Shifts?>(new JsonTask()
             {
-                Type = "getShiftTotals",
-            }, out var answer);
-
-            if (answer.Code == -1) return null;
-            var jobj = JsonConvert.DeserializeObject<Shifts>(answer.Json);
-            return jobj ?? null;
-        }
+                Priority = 1,
+                Task = JsonConvert.SerializeObject(new Request() {Type = "getShiftTotals"}),
+                Completion = new TaskCompletionSource<Answer>()
+            });
         
         public string GetStatus()
         {
@@ -509,21 +565,22 @@ namespace AtolDriver
             return result.ToString();
         }
         
+        
         private static int ReadNextRecord(IFptr fptr, String recordsId)
         {
             fptr.setParam(Constants.LIBFPTR_PARAM_RECORDS_ID, recordsId);
             return fptr.readNextRecord();
         }
 
-        private static int EndReadRecords(IFptr fptr, String recordsId)
+        private static void EndReadRecords(IFptr fptr, string recordsId)
         {
             fptr.setParam(Constants.LIBFPTR_PARAM_RECORDS_ID, recordsId);
-            return fptr.endReadRecords();
+            fptr.endReadRecords();
         }
 
         private static string Printable(int offset, String tagName, uint tagNumber, String tagValue, bool newLineBeforeValue, bool newLineAfterValue)
         {
-            return  $"{new StringBuilder().Insert(0, "  ", offset).ToString()}{tagName} ({tagNumber}): {(newLineBeforeValue ? "\n" : "")}{tagValue}{(newLineAfterValue ? "\n" : "")}";
+            return  $"{new StringBuilder().Insert(0, "  ", offset)}{tagName} ({tagNumber}): {(newLineBeforeValue ? "\n" : "")}{tagValue}{(newLineAfterValue ? "\n" : "")}";
         }
 
         private static string Parse(IFptr fptr, int printOffset, String tagName, byte[] tagValue, uint tagNumber, uint tagType)

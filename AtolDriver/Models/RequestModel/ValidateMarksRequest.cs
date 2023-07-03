@@ -27,7 +27,7 @@ namespace AtolDriver.Models.RequestModel
         public string ItemEstimatedStatus { get; set; }
 
         [JsonProperty("itemQuantity")] 
-        public int ItemQuantity { get; set; }
+        public int? ItemQuantity { get; set; }
 
         [JsonProperty("itemUnits")] 
         public string ItemUnits { get; set; }

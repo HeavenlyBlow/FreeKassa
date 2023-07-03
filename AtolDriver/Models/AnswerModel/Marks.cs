@@ -5,7 +5,15 @@ namespace AtolDriver.Models.RequestModel
 
     public class Marks
     {
-        [JsonProperty("validateMarks")] public List<ValidateMark> ValidateMarks { get; set; }
+        [JsonProperty("driverError")] public DriverError DriverError { get; set; }
+
+        [JsonProperty("itemInfoCheckResult")] public ItemInfoCheckResult ItemInfoCheckResult { get; set; }
+
+        [JsonProperty("offlineValidation")] public OfflineValidation OfflineValidation { get; set; }
+
+        [JsonProperty("onlineValidation")] public OnlineValidation OnlineValidation { get; set; }
+
+        [JsonProperty("sentImcRequest")] public bool SentImcRequest { get; set; }
     }
 
 // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
@@ -59,18 +67,5 @@ namespace AtolDriver.Models.RequestModel
 
         [JsonProperty("markOperatorResponseResult")]
         public string MarkOperatorResponseResult { get; set; }
-    }
-
-    public class ValidateMark
-    {
-        [JsonProperty("driverError")] public DriverError DriverError { get; set; }
-
-        [JsonProperty("itemInfoCheckResult")] public ItemInfoCheckResult ItemInfoCheckResult { get; set; }
-
-        [JsonProperty("offlineValidation")] public OfflineValidation OfflineValidation { get; set; }
-
-        [JsonProperty("onlineValidation")] public OnlineValidation OnlineValidation { get; set; }
-
-        [JsonProperty("sentImcRequest")] public bool SentImcRequest { get; set; }
     }
 }

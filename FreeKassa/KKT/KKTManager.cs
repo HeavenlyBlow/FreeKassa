@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using AtolDriver;
 using AtolDriver.Models;
 using AtolDriver.Models.AnswerModel;
@@ -14,10 +15,11 @@ using FreeKassa.Model.FiscalDocumentsModel;
 using FreeKassa.Printer;
 using FreeKassa.Repository;
 using FreeKassa.Utils;
+using Newtonsoft.Json;
 
 namespace FreeKassa.KKT
 {
-    public class KKTManager : IDisposable
+    public class KktManager : IDisposable
     {
 
         #region Header
@@ -26,21 +28,16 @@ namespace FreeKassa.KKT
         private AtolInterface _atolInterface;
         private Timer _timer;
         private object _locker = new();
-        private object _markedLocker = new();
-        private bool _manualShiftManagement;
         private readonly PrinterManager _printerManager;
         private readonly SimpleLogger _logger;
-        private int _receiptResending;
+        private readonly NotificationManager _notification;
         private MarkedCodeRepository _repository;
-        public delegate void ShiftsHandler();
-        public event ShiftsHandler OpenShifts;
-        public event ShiftsHandler ShiftsClose;
-        
-        public KKTManager(bool manualShiftManagement, PrinterManager printerManager, 
+
+        public KktManager(NotificationManager notification, PrinterManager printerManager, 
             Model.KKT kktSettings, SimpleLogger logger)
         {
+            _notification = notification;
             _logger = logger;
-            _manualShiftManagement = manualShiftManagement;
             _printerManager = printerManager;
             if (!Validation.CheckSetting(kktSettings))
             {
@@ -49,10 +46,11 @@ namespace FreeKassa.KKT
                 throw new SettingsExceptions("Отсутсвует имя кассира или включены обра режима смеен");
             }
             _kktModel = kktSettings;
-            StartKKT();
+            StartKkt();
         }
-        public KKTManager(Model.KKT kktSettings, SimpleLogger logger)
+        public KktManager(NotificationManager notification,Model.KKT kktSettings, SimpleLogger logger)
         {
+            _notification = notification;
             _logger = logger;
             if (!Validation.CheckSetting(kktSettings))
             {
@@ -60,7 +58,7 @@ namespace FreeKassa.KKT
                 throw new SettingsExceptions("Отсутсвует имя кассира или включены обра режима смеен");
             }
             _kktModel = kktSettings;
-            StartKKT();
+            StartKkt();
         }
 
         #endregion
@@ -69,19 +67,27 @@ namespace FreeKassa.KKT
 
         #region Base
 
-        private void StartKKT()
+        private async void StartKkt()
         {
             _repository = new MarkedCodeRepository();
             _atolInterface = new AtolInterface(_kktModel.SerialPort, _kktModel.BaundRate, _kktModel.MarkedProducts);
-            if (_atolInterface.OpenConnection() != 0)
+            var openConnect = await _atolInterface.OpenConnection();
+            
+            if (openConnect.Code != 0)
             {
-                _logger.Fatal("OpenConnectionException: Ошибка подключения к ККТ");
-                throw new OpenConnectionException("Ошибка подключения к ККТ");
+                var message = "OpenConnectionException: Ошибка подключения к ККТ";
+                _logger.Fatal(message);
+                _notification.OnError(message);
+                throw new OpenConnectionException(message);
             }
-            _atolInterface.SetDateTime();
+            
+            await _atolInterface.SetDateTime();
             _atolInterface.SetOperator(_kktModel.OperatorName, _kktModel.Inn);
             ShiftsControl();
-            if(_manualShiftManagement) return;
+            
+            // if(_kktModel.MarkedProducts)
+            //     StartCheckMarked();
+            
             StartTimer();
         }
         
@@ -95,29 +101,30 @@ namespace FreeKassa.KKT
         {
             lock (_locker)
             {
-                if (_kktModel.Shift.WorkKWithBreaks.On == 1) WorkKWithBreaksShiftsControl();
+                if (_kktModel.Shift.WorkKWithBreaks.On == 1) 
+                    WorkKWithBreaksShiftsControl();
+                
                 else NonStopWorkShiftsControl();
             }
         }
-        private void WorkKWithBreaksShiftsControl()
+        private async void WorkKWithBreaksShiftsControl()
         {
             var date = FileHelper.GetlastOpenShiftsDateTime();
             if (date == null)
                 
             {
-                StartShifts();
+                await StartShifts();
                 return;
             }
             var dateNow = DateTime.Now;
             UpdateModel();
-            var status = _atolInterface.GetShiftStatus();
+            var status = await _atolInterface.GetShiftStatus();
 
             if (status is null)
             {
-                var errorMessage = _atolInterface.ReadError();
-                _logger.Fatal($"GetShitStatus: {errorMessage}");
-                
-                //TODO При возниковении ошибки сделана заглушка так как не понятно как отпрабатывать
+                var errorMessage = await _atolInterface.ReadError();
+                _logger.Fatal($"GetShitStatus: {errorMessage.Text}");
+                _notification.OnError(errorMessage.Text);
                 return;
             }
             
@@ -127,113 +134,118 @@ namespace FreeKassa.KKT
                 {
                     if (status.Shift.State.Equals("closed"))
                     {
-                        StartShifts();
-                        return;
-                    };
+                        await StartShifts();
+                    }
                 }
                 else
                 {
-                    if ((status.Shift.State.Equals("opened")) || (status.Shift.State.Equals("expired"))) CloseShifts();
-                    return;
+                    if ((status.Shift.State.Equals("opened")) || (status.Shift.State.Equals("expired"))) 
+                        await CloseShifts();
                 }
             }
             else
             {
-                StartShifts();
+                await StartShifts();
             }
         }
-        private void NonStopWorkShiftsControl()
+        private async void NonStopWorkShiftsControl()
         {
             var date = FileHelper.GetlastOpenShiftsDateTime();
             if (date == null)
             {
                 _logger.Info("NonStopWorkShiftsControl: Отсутсвует дата последнего запуска смены. Запуск смены");
-                StartShifts();
+                await StartShifts();
                 
                 return;
             }
             var dateNow = DateTime.Now;
             UpdateModel();
             
-            var status = _atolInterface.GetShiftStatus();
+            var status = await _atolInterface.GetShiftStatus();
 
             if (status is null)
             {
-                var errorMessage = _atolInterface.ReadError();
-                _logger.Fatal($"GetShitStatus: {errorMessage}");
-                
+                var errorMessage = await _atolInterface.ReadError();
+                _logger.Fatal($"GetShitStatus: {errorMessage.Text}");
+                _notification.OnError(errorMessage.Text);
                 //TODO При возниковении ошибки сделана заглушка так как не понятно как отпрабатывать
                 return;
             }
             
             if (status.Shift.State.Equals("opened"))
             {
-                if (dateNow.Day == date.Value.Day) return;
+                if (dateNow.Day == date.Value.Day) 
+                    return;
 
-                if (dateNow < _kktModel.Shift.NonStopWork.ShiftChangeTime) return;
+                if (dateNow < _kktModel.Shift.NonStopWork.ShiftChangeTime) 
+                    return;
                 
                 _logger.Info($"NonStopWorkShiftsControl: Перезапуск смены:\n Cтатус смены: {status.Shift.State} \n Поседняя дата: {date} \n Сейчас: {dateNow} \n Дата закрытия: {_kktModel.Shift.NonStopWork.ShiftChangeTime}");
-                StartShifts();
+                await StartShifts();
 
                 return;
             }
 
-            if (!status.Shift.State.Equals("closed") && !status.Shift.State.Equals("expired")) return;
+            if (!status.Shift.State.Equals("closed") && !status.Shift.State.Equals("expired")) 
+                return;
             
             _logger.Info($"NonStopWorkShiftsControl: Запуск смены из-за статуса смены ккт : {status.Shift.State}");
-            StartShifts();
+            await StartShifts();
         }
-        private bool StartShifts()
+        private async Task StartShifts()
         {
-            var status = _atolInterface.GetShiftStatus();
+            var status = await _atolInterface.GetShiftStatus();
             
             if (status is null)
             {
-                var errorMessage = _atolInterface.ReadError();
-                _logger.Fatal($"GetShitStatus: {errorMessage}");
-                
+                var errorMessage = await _atolInterface.ReadError();
+                _logger.Fatal($"GetShitStatus: {errorMessage.Text}");
+                _notification.OnError(errorMessage.Text);
                 //TODO При возниковении ошибки сделана заглушка так как не понятно как отпрабатывать
-                return false;
+                return;
             }
             
-            if (!status.Shift.State.Equals("opened"))
+            if (status.Shift.State.Equals("expired") || status.Shift.State.Equals("opened"))
             {
-                _logger.Info($"StartShifts: Закрытие смены из-за статуса смены ккт : {status.Shift.State}");
-                CloseShifts();
+                await CloseShifts();
             }
             
-            var openShiftsAnswer = _atolInterface.OpenShift();
+            var openShiftsAnswer = await _atolInterface.OpenShift();
             
             if (openShiftsAnswer == null)
             {
-                var error = _atolInterface.ReadError();
-                _logger.Fatal($"StartShifts: Открытие смены произошло с ошибкой: {error}");
-                throw new ShiftException(error);
+                var error = await _atolInterface.ReadError();
+                _logger.Fatal($"StartShifts: Открытие смены произошло с ошибкой: {error.Text}");
+                _notification.OnError(error.Text);
+                throw new ShiftException(error.Text);
             }
             
-            OpenShifts?.Invoke();
-            
+            _logger.Info("Смена открыта");
+            _notification.OnOpenShift();
             FileHelper.WriteOpenShiftsDateTime();
-            if(_printerManager != null) _printerManager.Print(DataAboutOpeningShift(openShiftsAnswer));
             
-            return true;
+            if(_printerManager != null) 
+                _printerManager.Print(await DataAboutOpeningShift(openShiftsAnswer));
+
         }
-        private bool CloseShifts()
+        private async Task CloseShifts()
         {
-            var closeShiftsAnswer = _atolInterface.CloseShift();
+            var closeShiftsAnswer = await _atolInterface.CloseShift();
             
             if (closeShiftsAnswer == null)
             {
-                var error = _atolInterface.ReadError();
-                _logger.Fatal($"CloseShifts: Закрытие смены произошло с ошибкой: {error}");
-                throw new ShiftException(error);
+                var error = await _atolInterface.ReadError();
+                _logger.Fatal($"CloseShifts: Закрытие смены произошло с ошибкой: {error.Text}");
+                _notification.OnError(error.Text);
+                throw new ShiftException(error.Text);
             }
             
-            ShiftsClose?.Invoke();
+            _logger.Info("Смена закрыта");
+            _notification.OnCloseShift();
 
-            if(_printerManager != null) _printerManager.Print(DataAboutCloseShift(closeShiftsAnswer));
+            if(_printerManager != null) 
+                _printerManager.Print(await DataAboutCloseShift(closeShiftsAnswer));
             
-            return true;
         }
         private void StartTimer()
         {
@@ -250,43 +262,87 @@ namespace FreeKassa.KKT
 
         #region Marked
 
-        private void StartMarkedValidation()
+        private void StartCheckMarked()
         {
-            var num = 0; 
-            var tm = new TimerCallback(CheckMarked); 
-            _timer = new Timer(tm,num, 150000, 60000);
+            Task.Run(CheckManager);
+        }
+        
+        private async void CheckManager()
+        {
+            while (true)
+            {
+                await Task.Delay(10000);
+                var list = _repository.Read();
+                
+                if(!list.Any()) 
+                    continue;
+                
+                if(!await ImsServerCheck())
+                    continue;
+
+                foreach (var element in list)
+                {
+                    if (await CheckMarked(element))
+                        _repository.Delete(element.Marking);
+                }
+            }
+            // ReSharper disable once FunctionNeverReturns
         }
 
-        private void CheckMarked(object source)
+        private async Task<bool> CheckMarked(MarkingCheckModel marking)
         {
-
-            lock (_markedLocker)
+            var markingValid = false;
+            
+            while (marking.CheckIter < 3)
             {
-                var valid = new List<string>();
-            
-                var list = _repository.MarkedWorker<List<string>>(Work.Read);
-                if(list.Count == 0) return;
+                var model = await _atolInterface.ValidateMarks(marking.Marking);
 
-                var ping = _atolInterface.PingMarkingServer();
-            
-                if(ping.ErrorCode == 1)
-                    return;
-            
-                var model = _atolInterface.ValidateMarks(list);
+                if (model is null)
+                {
+                    _logger.Info($"Не получен ответ проверки маркировки!");
+                    marking.CheckIter++;
+                    continue;
+                }
 
-                if (model != null)
-                    
-                    for (int i = 0; i < model.ValidateMarks.Count; i++)
-                    {
-                        if (model.ValidateMarks[i].OnlineValidation.MarkOperatorResponse.ItemStatusCheck)
-                        {
-                            valid.Add(list[i]);
-                        }
-                    }
+                if (model.OnlineValidation.MarkOperatorResponse is null)
+                {
+                    _logger.Info($"Маркировка :{marking.Marking}\n не прошла проверку");
+                    marking.CheckIter++;
+                    continue;
+                }
 
-                _repository.MarkedWorker<bool>(Work.Delete, codeList: valid);
+                if (!model.OnlineValidation.MarkOperatorResponse.ItemStatusCheck)
+                {
+                    _logger.Info($"Маркировка :{marking.Marking}\n не прошла проверку");
+                    marking.CheckIter++;
+                    continue;
+                }
+
+                markingValid = true;
+                break;
             }
+
+            return markingValid;
+        }
+
+        private async Task<bool> ImsServerCheck()
+        {
+            var ping = await _atolInterface.PingMarkingServer();
+            var imsStatus = JsonConvert.DeserializeObject<ImsStatus>(ping.Text);
+                
+            if (imsStatus is null)
+            {
+                _logger.Fatal("Не получен статус сервера");
+                return false;
+            }
+
+            if (imsStatus.ErrorCode != 1) 
+                return true;
             
+            _logger.Fatal($"Cтатус имс: {imsStatus.ErrorCode} описание: {imsStatus.Description}");
+                    
+            return false;
+
         }
 
         #endregion
@@ -295,27 +351,21 @@ namespace FreeKassa.KKT
 
         public void OpenReceipt(ReceiptModel receiptType, ClientInfo clientInfo = null)
         {
-            // var status = _atolInterface.GetShiftStatus();
-            //
-            // if (!status.State.Equals("opened"))
-            // {
-            //     _logger.Fatal($"OpenReceipt: Чек не может быть открыт так как статус смены {status}");
-            // }
-            //
             _atolInterface.OpenReceipt(receiptType.isElectron,receiptType.TypeReceipt, receiptType.TaxationType, clientInfo);
         }
         public void AddProduct(BasketModel product)
         {
             if (product.Cost == 0)
             {
-                _logger.Fatal("AddProduct: Количество продуктов в корзине должно быть больше 0");
-                throw new ProductException("Количество должно быть больше 0!");
+                var message = "AddProduct: Количество продуктов в корзине должно быть больше 0";
+                _logger.Fatal(message);
+                _notification.OnError(message);
+                throw new ProductException(message);
             }
 
             if (product.Ims is not null)
-                _repository.MarkedWorker<bool>(Work.Save, codeList: product.Ims);
-            
-            
+                _repository.Save(marks: product.Ims);
+
             _atolInterface.AddPosition(
                 product.Name,
                 product.Cost,
@@ -329,32 +379,36 @@ namespace FreeKassa.KKT
         {
             if (pay.Sum == 0)
             {
-                _logger.Fatal("AddPay: Оплата должна быть больше 0");
-                throw new PayException("Оплата должна быть больше 0!");
+                var message = "AddPay: Оплата должна быть больше 0";
+                _logger.Fatal(message);
+                _notification.OnError(message);
+                throw new PayException(message);
             }
             _atolInterface.Pay(pay.PaymentType, pay.Sum);
         }
-        public void CloseReceipt(PayModel pay, List<BasketModel> basketModels,
-            ReceiptModel receiptModel, out ChequeFormModel data)
+        public async Task<ChequeFormModel> CloseReceipt(PayModel pay, List<BasketModel> basketModels,
+            ReceiptModel receiptModel)
         {
-            var chequeInfo = _atolInterface.CloseReceipt();
+            var chequeInfo = await _atolInterface.CloseReceipt();
             
             if (chequeInfo == null)
             {
-                var error = _atolInterface.ReadError();
-                _logger.Fatal($"CloseReceipt: Ошибка закрытия чека {error}");
-                
+                var error = await _atolInterface.ReadError();
+                _logger.Fatal($"CloseReceipt: Ошибка закрытия чека {error.Text}");
+                _notification.OnError("Ошибка закрытия чека");
             }
             
-            data = DataAboutChequeReceipt(pay, basketModels, receiptModel, chequeInfo);
+            var data = await DataAboutChequeReceipt(pay, basketModels, receiptModel, chequeInfo);
             
             if (data == null)
             {
                 _logger.Error($"CloseReceipt: Не хватает данных для печати");
-                
+                _notification.OnError("Нет данных для печати");
             }
             
             if(_printerManager != null && !receiptModel.isElectron) _printerManager.Print(data);
+
+            return data;
         }
         
         
@@ -386,15 +440,14 @@ namespace FreeKassa.KKT
 
         #region DataForPrinting
 
-        private CloseShiftsFormModel DataAboutCloseShift(CloseShiftsInfo info) 
+        private async Task<CloseShiftsFormModel> DataAboutCloseShift(CloseShiftsInfo info) 
         {
-           var company = _atolInterface.GetCompanyInfo();
-           var reportOfdExchangeStatus = _atolInterface.CountdownStatus();
-           var fnStatistic = _atolInterface.GetFnStatus();
-           var fnTotal = _atolInterface.GetShiftsTotal();
+           var company = await _atolInterface.GetCompanyInfo();
+           var reportOfdExchangeStatus = await _atolInterface.CountdownStatus();
+           var fnStatistic = await _atolInterface.GetFnStatus();
+           var fnTotal = await _atolInterface.GetShiftsTotal();
            
            var errors = reportOfdExchangeStatus!.Errors;
-           var ofd = reportOfdExchangeStatus.Status;
            var fqQuantityCounters = reportOfdExchangeStatus.FiscalParamsBase.fnQuantityCounters;
            var fn = reportOfdExchangeStatus.FiscalParamsBase.fnTotals;
            var fisqalParams = reportOfdExchangeStatus.FiscalParamsBase;
@@ -418,17 +471,17 @@ namespace FreeKassa.KKT
                
                TotalChequeShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Count.ToString(),
                QuantityChequeShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Count.ToString(),
-               AmountParishTotalShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Sum.ToString(),
-               AmountParishCashShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Cash.ToString(),
-               AmountParishCashlessShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Electronically.ToString(),
-               AmountAdvancePaymentsShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Prepaid.ToString(),
-               AmountCreditsShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Credit.ToString(),
-               AmountOtherFormPaymentShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Other.ToString(),
-               AmountVat20ShiftResult = fnReceipts.Buy.Payments.UserPaymentType1.ToString(),
-               AmountVat10ShiftResult = fnReceipts.Buy.Payments.UserPaymentType2.ToString(),
-               AmountVat20120ShiftResult = fnReceipts.Buy.Payments.UserPaymentType3.ToString(),
-               AmountVat10110ShiftResult = fnReceipts.Buy.Payments.UserPaymentType4.ToString(),
-               TurnoverVat0ShiftResult = fnReceipts.Buy.Payments.UserPaymentType5.ToString(),
+               AmountParishTotalShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Sum.ToString(CultureInfo.InvariantCulture),
+               AmountParishCashShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Cash.ToString(CultureInfo.InvariantCulture),
+               AmountParishCashlessShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Electronically.ToString(CultureInfo.InvariantCulture),
+               AmountAdvancePaymentsShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Prepaid.ToString(CultureInfo.InvariantCulture),
+               AmountCreditsShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Credit.ToString(CultureInfo.InvariantCulture),
+               AmountOtherFormPaymentShiftResult = fnTotal.ShiftTotals.Receipts.Sell.Payments.Other.ToString(CultureInfo.InvariantCulture),
+               AmountVat20ShiftResult = fnReceipts.Buy.Payments.UserPaymentType1.ToString(CultureInfo.InvariantCulture),
+               AmountVat10ShiftResult = fnReceipts.Buy.Payments.UserPaymentType2.ToString(CultureInfo.InvariantCulture),
+               AmountVat20120ShiftResult = fnReceipts.Buy.Payments.UserPaymentType3.ToString(CultureInfo.InvariantCulture),
+               AmountVat10110ShiftResult = fnReceipts.Buy.Payments.UserPaymentType4.ToString(CultureInfo.InvariantCulture),
+               TurnoverVat0ShiftResult = fnReceipts.Buy.Payments.UserPaymentType5.ToString(CultureInfo.InvariantCulture),
                AmountReturnReceiptComingShiftResult = fnReceipts.BuyReturn.Count.ToString(),
                AmountСonsumptionReceiptShiftResult = fnReceipts.Sell.Count.ToString(),
                AmountReturnReceiptInComingShiftResult = fnReceipts.SellReturn.Count.ToString(),
@@ -442,13 +495,13 @@ namespace FreeKassa.KKT
                AmountCreditsFnResult = fn.buy.creditSum.ToString(),
                AmountOtherFormPaymentFnResult = fn.buy.barterSum.ToString(),
                AmountVat10FnResult = fn.buy.vat10Sum.ToString(),
-               AmountVat20FnResult = fn.buy.vat20Sum.ToString(),
+               AmountVat20FnResult = fn.buy.vat20Sum.ToString(CultureInfo.InvariantCulture),
                AmountVat20120FnResult = fn.buy.vat120Sum.ToString(),
-               AmountVat10110FnResult = fn.buy.vat20Sum.ToString(),
+               AmountVat10110FnResult = fn.buy.vat20Sum.ToString(CultureInfo.InvariantCulture),
                TurnoverVat0FnResult = fn.buy.vat0Sum.ToString(),
                TurnoverNoVatFnResult = fn.buy.vatNoSum.ToString(),
                
-               DateTime = info.FiscalParamsBase.FiscalDocumentDateTime.ToString(),
+               DateTime = info.FiscalParamsBase.FiscalDocumentDateTime.ToString(CultureInfo.InvariantCulture),
                ShiftNumber = info.FiscalParamsBase.ShiftNumber.ToString(),
                RegisterNumberKKT = fisqalParams.RegistrationNumber,
                Inn = company.Vatin,
@@ -457,18 +510,18 @@ namespace FreeKassa.KKT
                FiscalFeatureDocument = info.FiscalParamsBase.FiscalDocumentSign,
                DontConnectOfD = errors.ofd.description,
                NotTransmittedFD = fnStatistic!.FnStatus.Warnings.OfdTimeout.ToString(),
-               NotTransmittedFrom = errors.lastSuccessConnectionDateTime.ToString(),
+               NotTransmittedFrom = errors.lastSuccessConnectionDateTime.ToString(CultureInfo.InvariantCulture),
                KeyResource = fnStatistic.FnStatus.Warnings.ResourceExhausted.ToString(),
            };
         }
-        private OpenShiftsFormModel DataAboutOpeningShift(OpenShiftInfo info)
+        private async Task<OpenShiftsFormModel> DataAboutOpeningShift(OpenShiftInfo info)
         {
-            var companyInfo = _atolInterface.GetCompanyInfo();
+            var companyInfo = await _atolInterface.GetCompanyInfo();
             if ((info == null) || companyInfo == null)
             {
                 _logger.Error($"OpenShiftsFormModel: Отсутсвует информация о открытии смены: {info} или о компании: {companyInfo}");
                 return null;
-            };
+            }
 
             return new OpenShiftsFormModel()
             {
@@ -484,10 +537,10 @@ namespace FreeKassa.KKT
                 FiscalFeatureDocument = info.FiscalDocumentSign
             };
         }
-        private ChequeFormModel DataAboutChequeReceipt(PayModel payModel, List<BasketModel> basketModels,
+        private async Task<ChequeFormModel> DataAboutChequeReceipt(PayModel payModel, List<BasketModel> basketModels,
             ReceiptModel receiptModel, ChequeInfo chequeInfo)
         {
-            var company = _atolInterface.GetCompanyInfo();
+            var company = await _atolInterface.GetCompanyInfo();
             if (payModel == null || basketModels.Count == 0 || receiptModel == null
                 || chequeInfo == null || company == null)
             {
@@ -516,6 +569,8 @@ namespace FreeKassa.KKT
                 _ => throw new ArgumentOutOfRangeException()
             };
 
+            var serialNumber = await _atolInterface.GetSerialNumber();
+
             var model = new ChequeFormModel()
             {
                 Address = company.Address,
@@ -524,8 +579,8 @@ namespace FreeKassa.KKT
                 Products = basketModels,
                 TypePay = type,
                 TaxesType = taxesType,
-                AmountOfTaxes = basketModels.Sum(c=> c.QuantityVat).ToString(),
-                SerialNumberKKT = _atolInterface.GetSerialNumber(),
+                AmountOfTaxes = basketModels.Sum(c=> c.QuantityVat).ToString(CultureInfo.InvariantCulture),
+                SerialNumberKKT = serialNumber.Text,
                 TotalPay = chequeInfo.FiscalParams.Total.ToString(),
                 DateTime = chequeInfo.FiscalParams.FiscalDocumentDateTime.ToString("u", CultureInfo.InvariantCulture),
                 FiscalStorageRegisterNumber = chequeInfo.FiscalParams.FnNumber,
@@ -595,7 +650,9 @@ namespace FreeKassa.KKT
         public void Dispose()
         {
             _timer.Dispose();
+#pragma warning disable CS4014
             _atolInterface.CloseConnection();
+#pragma warning restore CS4014
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿{
   "KKT": {
     "PrinterManagement": 1,
-    "MarkedProducts": false,
+    "MarkedProducts": true,
     "SerialPort": 9,
     "BaundRate" : 115200,
     "OperatorName": "Кассир 1",
@@ -9,7 +9,7 @@
     "Shift": {
       "NonStopWork": {
         "On" : 1,
-        "ShiftChangeTime" : "23:44"
+        "ShiftChangeTime" : "0:45"
       },
       "WorkKWithBreaks": {
         "On" : 0,
